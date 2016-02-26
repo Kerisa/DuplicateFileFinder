@@ -389,6 +389,12 @@ int FileGroup::ExportData()
     return 0;
 }
 
+    bool _cdecl HashCallback(const long long * const plen1, const long long * const plen2)
+    {
+        return true;
+    }
+
+
 int FileGroup::pHashFiles1S()
 {
     SHA_1 Hash;
@@ -405,10 +411,18 @@ int FileGroup::pHashFiles1S()
                 std::wstring tmp((*it1).Path);
                 (tmp += L'\\') += (*it1).Name;
 
-                Hash.CalculateSha1(const_cast<wchar_t*>(tmp.c_str()),
-                    Result, sizeof(Result)-2, true);
+                if (m_Filter.Switch[FileGroup::FILTER::Compare_FileHash]
+                    == FileGroup::FILTER::Type_RangeMatch)
+                    Hash.CalculateSha1(const_cast<wchar_t*>(tmp.c_str()),
+                        m_Filter.FileDataRange.LowerBound - 1,
+                        m_Filter.FileDataRange.UpperBound - m_Filter.FileDataRange.LowerBound + 1,
+                        (SHA_1::CallBack)HashCallback);
+                
+                else
+                    Hash.CalculateSha1(const_cast<wchar_t*>(tmp.c_str()),
+                        (SHA_1::CallBack)HashCallback);
 
-                std::wstring str = std::wstring(Result);
+                std::wstring str = Hash.GetHashResult();
                 std::map<std::wstring, std::vector<pFileInfo>>::iterator it2;
                 if ((it2 = m_List1H.find(str)) != m_List1H.end())
                     (*it2).second.push_back(&(*it1));
@@ -438,13 +452,21 @@ int FileGroup::pHashFiles2SN()
             std::vector<FileInfo>::iterator it2;
             for (it2=(*it1).second.begin(); it2!=(*it1).second.end(); ++it2)
             {
-                std::wstring full = std::wstring((*it2).Path);
-                (full += L'\\') += (*it2).Name;
+                std::wstring tmp = std::wstring((*it2).Path);
+                (tmp += L'\\') += (*it2).Name;
                 
-                Hash.CalculateSha1(const_cast<wchar_t*>(full.c_str()),
-                    Result, sizeof(Result)-2, true);
+                if (m_Filter.Switch[FileGroup::FILTER::Compare_FileHash]
+                    == FileGroup::FILTER::Type_RangeMatch)
+                    Hash.CalculateSha1(const_cast<wchar_t*>(tmp.c_str()),
+                        m_Filter.FileDataRange.LowerBound - 1,
+                        m_Filter.FileDataRange.UpperBound - m_Filter.FileDataRange.LowerBound + 1,
+                        (SHA_1::CallBack)HashCallback);
+                
+                else
+                    Hash.CalculateSha1(const_cast<wchar_t*>(tmp.c_str()),
+                        (SHA_1::CallBack)HashCallback);
 
-                std::wstring str = std::wstring(Result);
+                std::wstring str = Hash.GetHashResult();
                 std::map<std::wstring, std::vector<pFileInfo>>::iterator it3;
                 if ((it3 = m_List1H.find(str)) != m_List1H.end())
                     (*it3).second.push_back(&(*it2));
@@ -476,10 +498,18 @@ int FileGroup::pHashFiles1N()
                 std::wstring tmp((*it1).Path);
                 (tmp += L'\\') += (*it1).Name;
 
-                Hash.CalculateSha1(const_cast<wchar_t*>(tmp.c_str()),
-                    Result, sizeof(Result)-2, true);
+                if (m_Filter.Switch[FileGroup::FILTER::Compare_FileHash]
+                    == FileGroup::FILTER::Type_RangeMatch)
+                    Hash.CalculateSha1(const_cast<wchar_t*>(tmp.c_str()),
+                        m_Filter.FileDataRange.LowerBound - 1,
+                        m_Filter.FileDataRange.UpperBound - m_Filter.FileDataRange.LowerBound + 1,
+                        (SHA_1::CallBack)HashCallback);
+                
+                else
+                    Hash.CalculateSha1(const_cast<wchar_t*>(tmp.c_str()),
+                        (SHA_1::CallBack)HashCallback);
 
-                std::wstring str = std::wstring(Result);
+                std::wstring str = Hash.GetHashResult();
                 std::map<std::wstring, std::vector<pFileInfo>>::iterator it2;
                 if ((it2 = m_List1H.find(str)) != m_List1H.end())
                     (*it2).second.push_back(&(*it1));
@@ -508,10 +538,18 @@ int FileGroup::pHashFiles0()
         std::wstring tmp((*it).Path);
         (tmp += L'\\') += (*it).Name;
 
-        Hash.CalculateSha1(const_cast<wchar_t*>(tmp.c_str()),
-            Result, sizeof(Result)-2, true);
+        if (m_Filter.Switch[FileGroup::FILTER::Compare_FileHash]
+            == FileGroup::FILTER::Type_RangeMatch)
+            Hash.CalculateSha1(const_cast<wchar_t*>(tmp.c_str()),
+                m_Filter.FileDataRange.LowerBound - 1,
+                m_Filter.FileDataRange.UpperBound - m_Filter.FileDataRange.LowerBound + 1,
+                (SHA_1::CallBack)HashCallback);
+                
+        else
+            Hash.CalculateSha1(const_cast<wchar_t*>(tmp.c_str()),
+                (SHA_1::CallBack)HashCallback);
 
-        std::wstring str = std::wstring(Result);
+        std::wstring str = Hash.GetHashResult();
         std::map<std::wstring, std::vector<pFileInfo>>::iterator it2;
         if ((it2 = m_List1H.find(str)) != m_List1H.end())
             (*it2).second.push_back(&(*it));

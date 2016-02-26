@@ -208,7 +208,6 @@ static bool Cls_OnInitDialog(HWND hDlg, HWND hwndFocus, LPARAM lParam)
     static const int cListViewPos[4] = {7, 64, 1020, 450};
 
     int setpart[2];
-    TCHAR szBuffer[MAX_PATH];
 
     //g_hDlgFilter = CreateDialog(g_hInstance, 
     //    MAKEINTRESOURCE(IDD_FILTER), hDlg, FilterDialogProc);

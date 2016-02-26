@@ -12,7 +12,8 @@ class SHA_1
         ZEN_LITTLE_ENDIAN,
         SHA1_BLOCK_SIZE = 64,
         SHA1_HASH_SIZE = 20,
-        SHA1_READ_BYTES = SHA1_BLOCK_SIZE * 512,
+        __Scale = 512,
+        SHA1_READ_BYTES = SHA1_BLOCK_SIZE * __Scale,
     };
 
     typedef struct
@@ -25,7 +26,6 @@ class SHA_1
 
     SHA1INFO ctx;
     PBYTE    pData;
-    wchar_t  m_Result;
 
     // Ð¡¶ËÄ£Ê½
     static const int c_BytesOrder = ZEN_LITTLE_ENDIAN;
@@ -52,13 +52,18 @@ class SHA_1
     ULONG64 ROTR64(ULONG64 qword, ULONG n) { return qword >> n ^ qword << (64 - n); }
 
     
-    bool  Sha1Init         (HANDLE hFile);
+    bool  Sha1Init         (ULONG64 size);
     void  SwapMemCopy      (PBYTE to, PBYTE from, int len);
     int   ToHexString      (PBYTE in, wchar_t *out, int cb);
     void  Sha1ProcessBlock (DWORD hash[5], DWORD Block[SHA1_BLOCK_SIZE / 4]);
     void  Sha1ProcessFinal (PSHA1INFO psi, PBYTE pBuffer, PBYTE pResult);
 
 public:
-    int   CalculateSha1    (wchar_t *szFileName, wchar_t *pbHashResult, int cb, bool bContinue);
-    int   CalculateSha1    (wchar_t *szFileName, ULONG64 offset, ULONG64 len, wchar_t *pbHashResult, int cb, bool bContinue);
+    typedef bool (_cdecl *CallBack)(const long long * const length, const long long * const uplength);
+
+    wchar_t  m_Result[44];
+
+    int   CalculateSha1    (wchar_t *szFileName, CallBack callback);
+    int   CalculateSha1    (wchar_t *szFileName, ULONG64 offset, ULONG64 len, CallBack callback);
+    const wchar_t *  GetHashResult    () { return m_Result; }
 };

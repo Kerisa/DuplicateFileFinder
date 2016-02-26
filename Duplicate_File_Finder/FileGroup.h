@@ -164,7 +164,7 @@ public:
         int FileNameWithoutSuffix;
         struct {
             ULONG64 UpperBound;
-            ULONG64 LowerBound;
+            ULONG64 LowerBound; // 1 based (not zero)
             bool    Inverted;
         } FileNameRange, FileSizeRange, FileDataRange;
 

@@ -366,8 +366,6 @@ int SelectSameHash(HWND hList)
 //////////////////////////////////////////////////////////////////////////////////////////////
 void pInsertListViewItem(HWND hList, FileGroup::pFileInfo pfi, std::wstring* phash, DWORD index)			// ·Ö×éÏÔÊ¾ : LVIF_GROUPID
 {
-	SYSTEMTIME	st;
-	FILETIME	lft;
 	TCHAR		Buffer[128];
 	LVITEM		lvI;
 

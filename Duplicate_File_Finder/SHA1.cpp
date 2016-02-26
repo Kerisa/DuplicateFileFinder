@@ -3,17 +3,9 @@
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 //  功能：初始化psi结构体
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-bool SHA_1::Sha1Init(HANDLE hFile)
+bool SHA_1::Sha1Init(ULONG64 size)
 {
-	LONGLONG	dwSize = 0;
-
-    if (hFile == INVALID_HANDLE_VALUE)
-        return false;
-
-	ctx.length = GetFileSize(hFile, (DWORD *)&dwSize);
-	if (dwSize)
-        ctx.length += ((dwSize & 0x00000000ffffffff) << 32);
-    ctx.uplength = ctx.length;
+    ctx.uplength = ctx.length = size;
 
 	// 初始化算法的几个常量，魔术数
     ctx._hash[0] = 0x67452301;
@@ -239,60 +231,219 @@ void SHA_1::Sha1ProcessFinal(PSHA1INFO psi, PBYTE pBuffer, PBYTE pResult)
 //  pbHashResult	- 接收结果的缓冲区
 //  iSize			- 缓冲区大小
 //  bContinue		- 终止标志
-//  返回值：0-正常结束， 1-用户终止， -1-无法打开文件
+//  返回值：0-正常结束， 1-用户终止， -1-无法打开文件, -2-参数错误, -3-???
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-int SHA_1::CalculateSha1(wchar_t *szFileName, wchar_t* pbHashResult, int cb, bool bContinue)
+int SHA_1::CalculateSha1(wchar_t *szFileName, CallBack callback)
 {
 	HANDLE		hFile;
 	BYTE		pbResultTmp[20], pbHashBuffer[SHA1_READ_BYTES+10];
 	DWORD		dwBytesRead;
-	int			iLoop;
+	int			iLoop, cnt = 0, ret = 0;
+    bool        Continue = true;
 
 	if (INVALID_HANDLE_VALUE != 
 				(hFile = CreateFile(szFileName, GENERIC_READ, 
 					FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL)))
 	{
-		Sha1Init(hFile);
+        ULARGE_INTEGER size;
+        size.LowPart = GetFileSize(hFile, &size.HighPart);
+        Sha1Init(size.QuadPart);
+
 		ReadFile(hFile, pbHashBuffer, SHA1_READ_BYTES, &dwBytesRead, NULL);
 		pData = pbHashBuffer;
 
 		// 每次读取512个BLOCK计算
-		while (bContinue && dwBytesRead == SHA1_READ_BYTES)
+        cnt = 0;
+		while (Continue && dwBytesRead == SHA1_READ_BYTES)
 		{
 			ctx.uplength -= SHA1_READ_BYTES;
-			iLoop = 512;
+			iLoop = __Scale;
 			while(iLoop--)
 			{
-				Sha1ProcessBlock(ctx._hash, (DWORD *)pData);
+				Sha1ProcessBlock(ctx._hash, (PDWORD)pData);
 				pData += SHA1_BLOCK_SIZE;
 			}
 			ReadFile(hFile, pbHashBuffer, SHA1_READ_BYTES, &dwBytesRead, NULL);
 			pData = pbHashBuffer;
+
+            if (++cnt == 10)
+            {
+                __try
+                {
+                    Continue = callback(&ctx.length, &ctx.uplength);
+                }
+                __except(1)
+                {
+                }
+                cnt = 0;
+            }
 		}
+
+
 		// 处理剩余部分
-		if (bContinue)				
-		{
-			iLoop		= dwBytesRead / SHA1_BLOCK_SIZE;
-            ctx.uplength	-= iLoop * SHA1_BLOCK_SIZE;
-			while(iLoop--)
-			{
-				Sha1ProcessBlock(ctx._hash, (DWORD *)pData);
-				pData += SHA1_BLOCK_SIZE;
-			}
-			Sha1ProcessFinal(&ctx, pData, pbResultTmp);
-		}
+        if (Continue)
+        {		
+		    iLoop = dwBytesRead / SHA1_BLOCK_SIZE;
+            ctx.uplength -= iLoop * SHA1_BLOCK_SIZE;
+            int cnt = 0;
+		    while(iLoop--)
+		    {
+			    Sha1ProcessBlock(ctx._hash, (PDWORD)pData);
+			    pData += SHA1_BLOCK_SIZE;
+		    }
+
+		    Sha1ProcessFinal(&ctx, pData, pbResultTmp);
+
+            __try
+            {
+                Continue = callback(&ctx.length, &ctx.uplength);
+            }
+            __except(1)
+            {
+            }
+        }
+
 		CloseHandle(hFile);
-		if (bContinue)
-		{
-			ToHexString(pbResultTmp, pbHashResult, cb);
-			return 0;
-		}
-		else return 1;
+		
+        ret = !Continue;
+        if (Continue)
+			ToHexString(pbResultTmp, m_Result, sizeof(m_Result)-2);
 	}
-	return -1;
+    else
+        ret = -1;
+
+    return ret;
 }
 
-int SHA_1::CalculateSha1 (wchar_t *szFileName, ULONG64 offset, ULONG64 len, wchar_t *pbHashResult, int cb, bool bContinue)
+int SHA_1::CalculateSha1 (wchar_t *szFileName, ULONG64 offset, ULONG64 len, CallBack callback)
 {
-    return 0;
+    HANDLE		hFile;
+	DWORD		dwBytesRead = 0;
+	int			iLoop, cnt = 0, ret = 0;
+	BYTE		pbResultTmp[20], pbHashBuffer[SHA1_READ_BYTES+10];
+    bool        Continue = true;
+
+    do 
+    {
+        memset(m_Result, 0, sizeof(m_Result));
+
+	    if (INVALID_HANDLE_VALUE != 
+				    (hFile = CreateFile(szFileName, GENERIC_READ, 
+					    FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL)))
+	    {
+            ULARGE_INTEGER ui;
+            ui.LowPart = GetFileSize(hFile, (PDWORD)&ui.HighPart);
+            if (ui.QuadPart < offset + len)
+            {
+                ret = -2;
+                break;
+            }
+
+            Sha1Init(len);
+
+            ui.QuadPart = offset;
+
+            if (INVALID_SET_FILE_POINTER ==
+                SetFilePointer(hFile, ui.LowPart, (PLONG)&ui.HighPart, FILE_BEGIN))
+            {
+                ret = -2;
+                break;
+            }
+
+            if (ctx.uplength >= SHA1_READ_BYTES)
+            {
+                if (!ReadFile(hFile, pbHashBuffer, SHA1_READ_BYTES, &dwBytesRead, NULL)
+                    || dwBytesRead != SHA1_READ_BYTES)
+                {
+                    ret = -2;
+                    break;
+                }
+            }
+            else
+            {
+                if (!ReadFile(hFile, pbHashBuffer, ctx.uplength, &dwBytesRead, NULL)
+                    || dwBytesRead != ctx.uplength)
+                {
+                    ret = -2;
+                    break;
+                }
+            }
+
+		
+		    pData = pbHashBuffer;
+
+		    // 每次读取512个BLOCK计算
+            cnt = 0;
+		    while (Continue && ctx.uplength >= SHA1_READ_BYTES)
+		    {
+			    ctx.uplength -= SHA1_READ_BYTES;
+			    iLoop = __Scale;
+			    while(iLoop--)
+			    {
+				    Sha1ProcessBlock(ctx._hash, (PDWORD)pData);
+				    pData += SHA1_BLOCK_SIZE;
+			    }
+			    
+                ReadFile(hFile, pbHashBuffer,
+                    ctx.uplength>=SHA1_READ_BYTES ? SHA1_READ_BYTES : ctx.uplength,
+                    &dwBytesRead, NULL);
+                
+			    pData = pbHashBuffer;
+
+                if (++cnt == 10)
+                {
+                    __try
+                    {
+                        Continue = callback(&ctx.length, &ctx.uplength);
+                    }
+                    __except(1)
+                    {
+                    }
+                    cnt = 0;
+                }
+		    }
+
+
+		    // 处理剩余部分
+            if (Continue)
+            {		
+		        iLoop = dwBytesRead / SHA1_BLOCK_SIZE;
+                ctx.uplength -= iLoop * SHA1_BLOCK_SIZE;
+                if (ctx.uplength < 0)
+                {
+                    ret = -3;
+                    break;
+                }
+
+                int cnt = 0;
+		        while(iLoop--)
+		        {
+			        Sha1ProcessBlock(ctx._hash, (PDWORD)pData);
+			        pData += SHA1_BLOCK_SIZE;
+		        }
+
+		        Sha1ProcessFinal(&ctx, pData, pbResultTmp);
+
+                __try
+                {
+                    Continue = callback(&ctx.length, &ctx.uplength);
+                }
+                __except(1)
+                {
+                }
+            }
+            		
+            ret = !Continue;
+            if (Continue)
+			    ToHexString(pbResultTmp, m_Result, sizeof(m_Result)-2);
+	    }
+        else
+            ret = -1;
+    }
+    while (0);
+
+    
+	CloseHandle(hFile);
+    return ret;
+
 }
