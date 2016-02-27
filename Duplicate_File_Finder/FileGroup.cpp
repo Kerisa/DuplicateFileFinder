@@ -58,7 +58,7 @@ int FileGroup::StoreMatchedFile(const std::wstring& path, const PWIN32_FIND_DATA
         {
             std::map<ULONG64, std::vector<FileInfo>>::iterator it = m_List1S.find(idx);
             if (it != m_List1S.end())
-                (*it).second.push_back(fi);
+                it->second.push_back(fi);
             else
             {
                 std::vector<FileInfo> v;
@@ -118,9 +118,9 @@ int FileGroup::StoreMatchedFile(const std::wstring& path, const PWIN32_FIND_DATA
                 if (name.find(m_Filter.KeyWordOfFileName) != std::wstring::npos)
                 {
                     if ((it = m_List2SN.find(idx)) != m_List2SN.end()
-                        && (it1 = (*it).second.find(m_Filter.KeyWordOfFileName)) != (*it).second.end())
+                        && (it1 = it->second.find(m_Filter.KeyWordOfFileName)) != it->second.end())
                     {
-                        (*it1).second.push_back(fi);
+                        it1->second.push_back(fi);
                     }
                     else
                     {
@@ -143,9 +143,9 @@ int FileGroup::StoreMatchedFile(const std::wstring& path, const PWIN32_FIND_DATA
                         break;
 
                     if ((it = m_List2SN.find(idx)) != m_List2SN.end()
-                        && (it1 = (*it).second.find(part)) != (*it).second.end())
+                        && (it1 = it->second.find(part)) != it->second.end())
                     {
-                        (*it1).second.push_back(fi);
+                        it1->second.push_back(fi);
                     }
                     else
                     {
@@ -172,7 +172,7 @@ int FileGroup::StoreMatchedFile(const std::wstring& path, const PWIN32_FIND_DATA
             {
             case FILTER::Type_Whole:
                 if ((it = m_List1N.find(name)) != m_List1N.end())
-                    (*it).second.push_back(fi);
+                    it->second.push_back(fi);
                 else
                 {
                     std::vector<FileInfo> v;
@@ -185,7 +185,7 @@ int FileGroup::StoreMatchedFile(const std::wstring& path, const PWIN32_FIND_DATA
                 if (name.find(m_Filter.KeyWordOfFileName) != std::wstring::npos)
                 {
                     if ((it = m_List1N.find(m_Filter.KeyWordOfFileName)) != m_List1N.end())
-                        (*it).second.push_back(fi);
+                        it->second.push_back(fi);
                     else
                     {
                         std::vector<FileInfo> v;
@@ -205,7 +205,7 @@ int FileGroup::StoreMatchedFile(const std::wstring& path, const PWIN32_FIND_DATA
                         break;
 
                     if ((it = m_List1N.find(part)) != m_List1N.end())
-                            (*it).second.push_back(fi);
+                            it->second.push_back(fi);
                     else
                     {
                         std::vector<FileInfo> v;
@@ -305,10 +305,10 @@ int FileGroup::ExportData()
         std::vector<pFileInfo>::iterator it1;
         for (it=m_List1H.begin(); it != m_List1H.end(); ++it)
         {
-            if ((*it).second.size() > 1)
+            if (it->second.size() > 1)
             {
-                for (it1=(*it).second.begin(); it1!=(*it).second.end(); ++it1)
-                    InsertListViewItem(*it1, const_cast<std::wstring*>(&(*it).first));
+                for (it1=it->second.begin(); it1!=it->second.end(); ++it1)
+                    InsertListViewItem(*it1, const_cast<std::wstring*>(&it->first));
             }
         }
     }
@@ -322,9 +322,9 @@ int FileGroup::ExportData()
             std::vector<FileInfo>::iterator it1;
             for (it=m_List1S.begin(); it != m_List1S.end(); ++it)
             {
-                if ((*it).second.size() > 1)
+                if (it->second.size() > 1)
                 {
-                    for (it1=(*it).second.begin(); it1!=(*it).second.end(); ++it1)
+                    for (it1=it->second.begin(); it1!=it->second.end(); ++it1)
                        InsertListViewItem(&(*it1));
                 }
             }
@@ -340,11 +340,11 @@ int FileGroup::ExportData()
             std::vector<FileInfo>::iterator it2;
             for (it=m_List2SN.begin(); it != m_List2SN.end(); ++it)
             {
-                for (it1=(*it).second.begin(); it1!=(*it).second.end(); ++it1)
+                for (it1=it->second.begin(); it1!=it->second.end(); ++it1)
                 {
-                    if ((*it1).second.size() > 1)
+                    if (it1->second.size() > 1)
                     {
-                        for (it2=(*it1).second.begin(); it2!=(*it1).second.end(); ++it2)
+                        for (it2=it1->second.begin(); it2!=it1->second.end(); ++it2)
                            InsertListViewItem(&(*it2));
                     }
                 }
@@ -362,9 +362,9 @@ int FileGroup::ExportData()
             std::vector<FileInfo>::iterator it1;
             for (it=m_List1N.begin(); it!=m_List1N.end(); ++it)
             {
-                if ((*it).second.size() > 1)
+                if (it->second.size() > 1)
                 {
-                    for (it1=(*it).second.begin(); it1!=(*it).second.end(); ++it1)
+                    for (it1=it->second.begin(); it1!=it->second.end(); ++it1)
                         InsertListViewItem(&(*it1));
                 }
             }
@@ -402,14 +402,14 @@ int FileGroup::pHashFiles1S()
 
     std::map<ULONG64, std::vector<FileInfo>>::iterator it;
     for (it=m_List1S.begin(); it!=m_List1S.end(); ++it)
-        if ((*it).second.size() > 1)
+        if (it->second.size() > 1)
         {
             std::vector<FileInfo>::iterator it1;
             
-            for (it1=(*it).second.begin(); it1!=(*it).second.end(); ++it1)
+            for (it1=it->second.begin(); it1!=it->second.end(); ++it1)
             {
-                std::wstring tmp((*it1).Path);
-                (tmp += L'\\') += (*it1).Name;
+                std::wstring tmp(it1->Path);
+                (tmp += L'\\') += it1->Name;
 
                 int res;
                 if (m_Filter.Switch[FileGroup::FILTER::Compare_FileHash]
@@ -429,7 +429,7 @@ int FileGroup::pHashFiles1S()
                 std::wstring str = Hash.GetHashResult();
                 std::map<std::wstring, std::vector<pFileInfo>>::iterator it2;
                 if ((it2 = m_List1H.find(str)) != m_List1H.end())
-                    (*it2).second.push_back(&(*it1));
+                    it2->second.push_back(&(*it1));
                 else
                 {
                     std::vector<pFileInfo> v;
@@ -451,13 +451,13 @@ int FileGroup::pHashFiles2SN()
     for (it=m_List2SN.begin(); it!=m_List2SN.end(); ++it)
     {
         std::map<std::wstring, std::vector<FileInfo>>::iterator it1;
-        for (it1=(*it).second.begin(); it1!=(*it).second.end(); ++it1)
+        for (it1=it->second.begin(); it1!=it->second.end(); ++it1)
         {
             std::vector<FileInfo>::iterator it2;
-            for (it2=(*it1).second.begin(); it2!=(*it1).second.end(); ++it2)
+            for (it2=it1->second.begin(); it2!=it1->second.end(); ++it2)
             {
-                std::wstring tmp = std::wstring((*it2).Path);
-                (tmp += L'\\') += (*it2).Name;
+                std::wstring tmp = std::wstring(it2->Path);
+                (tmp += L'\\') += it2->Name;
                 
                 int res;
                 if (m_Filter.Switch[FileGroup::FILTER::Compare_FileHash]
@@ -497,14 +497,14 @@ int FileGroup::pHashFiles1N()
 
     std::map<std::wstring, std::vector<FileInfo>>::iterator it;
     for (it=m_List1N.begin(); it!=m_List1N.end(); ++it)
-        if ((*it).second.size() > 1)
+        if (it->second.size() > 1)
         {
             std::vector<FileInfo>::iterator it1;
             
-            for (it1=(*it).second.begin(); it1!=(*it).second.end(); ++it1)
+            for (it1=it->second.begin(); it1!=it->second.end(); ++it1)
             {
-                std::wstring tmp((*it1).Path);
-                (tmp += L'\\') += (*it1).Name;
+                std::wstring tmp(it1->Path);
+                (tmp += L'\\') += it1->Name;
 
                 int res;
                 if (m_Filter.Switch[FileGroup::FILTER::Compare_FileHash]
@@ -524,7 +524,7 @@ int FileGroup::pHashFiles1N()
                 std::wstring str = Hash.GetHashResult();
                 std::map<std::wstring, std::vector<pFileInfo>>::iterator it2;
                 if ((it2 = m_List1H.find(str)) != m_List1H.end())
-                    (*it2).second.push_back(&(*it1));
+                    it2->second.push_back(&(*it1));
                 else
                 {
                     std::vector<pFileInfo> v;
@@ -547,8 +547,8 @@ int FileGroup::pHashFiles0()
             
     for (it=m_List0.begin(); it!=m_List0.end(); ++it)
     {
-        std::wstring tmp((*it).Path);
-        (tmp += L'\\') += (*it).Name;
+        std::wstring tmp(it->Path);
+        (tmp += L'\\') += it->Name;
 
         int res;
 
@@ -569,7 +569,7 @@ int FileGroup::pHashFiles0()
         std::wstring str = Hash.GetHashResult();
         std::map<std::wstring, std::vector<pFileInfo>>::iterator it2;
         if ((it2 = m_List1H.find(str)) != m_List1H.end())
-            (*it2).second.push_back(&(*it));
+            it2->second.push_back(&(*it));
         else
         {
             std::vector<pFileInfo> v;
@@ -788,7 +788,7 @@ int FileGroup::StartSearchFiles()
     std::map<std::wstring, int>::iterator it;
     for (it=m_Filter.SearchDirectory.begin(); it!=m_Filter.SearchDirectory.end(); ++it)
     {
-        FindFiles((*it).first, 100);
+        FindFiles(it->first, 100);
     }
 
     if (m_Filter.Switch[FileGroup::FILTER::Compare_FileHash] != FileGroup::FILTER::Type_Off)

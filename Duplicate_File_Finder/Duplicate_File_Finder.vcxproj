@@ -75,6 +75,7 @@
     <ResourceCompile Include="main.rc" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="64x64.ico" />
     <None Include="bitbug_64.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

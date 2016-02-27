@@ -51,5 +51,8 @@
     <None Include="bitbug_64.ico">
       <Filter>资源文件</Filter>
     </None>
+    <None Include="64x64.ico">
+      <Filter>资源文件</Filter>
+    </None>
   </ItemGroup>
 </Project>

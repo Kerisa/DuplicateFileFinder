@@ -249,6 +249,15 @@ static bool Cls_OnInitDialog(HWND hDlg, HWND hwndFocus, LPARAM lParam)
     return FALSE;
 }
 
+void Cls_OnSysCommand0(HWND hwnd, UINT cmd, int x, int y)
+{
+    if (cmd == SC_CLOSE)
+    {
+        SendMessage(g_hDlgFilter, WM_SYSCOMMAND, SC_CLOSE, 0);
+        EndDialog(hwnd, 0);
+    }
+}
+
 BOOL CALLBACK MainDlgProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam)
 {
     static const int cListViewPos[4] = {7, 64, 1020, 450};
@@ -260,6 +269,7 @@ BOOL CALLBACK MainDlgProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam)
     {
         HANDLE_MSG(hDlg, WM_COMMAND,	 Cls_OnCommand_main);
         HANDLE_MSG(hDlg, WM_CLOSE,		 Cls_OnClose);
+        HANDLE_MSG(hDlg, WM_SYSCOMMAND,	 Cls_OnSysCommand0);
         HANDLE_MSG(hDlg, WM_INITDIALOG,  Cls_OnInitDialog);
         case WM_NOTIFY:			// 7, 64, 1020, 390
 		if (((NMHDR*)lParam)->idFrom == ID_LISTVIEW)
@@ -626,9 +636,9 @@ void LoadFilterConfigToDialog(HWND hDlg, FileGroup& fg)
     for (it=fg.m_Filter.SearchDirectory.begin(); it!=fg.m_Filter.SearchDirectory.end(); ++it)
     {
         str.clear();
-        //StringCchPrintf(Buffer, MAX_PATH, L"[%d]", (*it).second);
+        //StringCchPrintf(Buffer, MAX_PATH, L"[%d]", it->second);
         //str += Buffer;
-        str += (*it).first;
+        str += it->first;
         SendDlgItemMessage(hDlg, IDC_LIST_DIR, LB_ADDSTRING, 0, (LPARAM)str.c_str());
     }
 
@@ -843,8 +853,36 @@ void UpdateFilterConfig(HWND hDlg, FileGroup& fg)
     }
 }
 
+bool IsSubString(const wchar_t* child, const wchar_t* parent)
+{
+    if (!child || !parent)
+        return false;
 
-static bool curState[6] = {0};
+    bool ret;
+
+    while (*child && (ret = *child == *parent))
+        ++child, ++parent;
+
+    return ret;
+}
+
+bool HashParentDirectoryInList(HWND hList, const wchar_t *dir)
+{
+    if (!dir)
+        return true;
+
+    wchar_t Buf[MAX_PATH];
+
+    int cnt = SendMessage(hList, LB_GETCOUNT, 0, 0);
+    for (int i=0; i<cnt; ++i)
+    {
+        SendMessage(hList, LB_GETTEXT, i, (LPARAM)Buf);
+        if (IsSubString(Buf, dir))
+            return true;
+    }
+
+    return false;
+}
 
 static bool Cls_OnCommand_filter(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
 {
@@ -861,8 +899,31 @@ static bool Cls_OnCommand_filter(HWND hDlg, int id, HWND hwndCtl, UINT codeNotif
 
     case IDC_BUTTON_ADDDIR:
 	    OpenFolder(hDlg, Buffer);
-        if (Buffer[0])
-	        SendDlgItemMessage(hDlg, IDC_LIST_DIR, LB_ADDSTRING, 0, (LPARAM)Buffer);
+        if (Buffer[0] &&
+            LB_ERR == SendDlgItemMessage(hDlg, IDC_LIST_DIR, LB_FINDSTRINGEXACT, -1, (LPARAM)Buffer))
+        {
+            if (!HashParentDirectoryInList(GetDlgItem(hDlg, IDC_LIST_DIR), Buffer))
+            {
+                int ans = 0;
+                if (LB_ERR != SendDlgItemMessage(hDlg, IDC_LIST_DIR, LB_FINDSTRING, -1, (LPARAM)Buffer))
+                    ans = MessageBox(hDlg, L"列表中包含的子文件夹将被剔除", L"提示", MB_YESNO);
+                if (ans == IDYES)
+                {
+                    int i;
+                    do
+                    {
+                        i = SendDlgItemMessage(hDlg, IDC_LIST_DIR, LB_FINDSTRING, -1, (LPARAM)Buffer);
+                        SendDlgItemMessage(hDlg, IDC_LIST_DIR, LB_DELETESTRING, i, 0);
+                    }
+                    while (i != LB_ERR);
+                }
+            
+                if (ans != IDNO)
+	                SendDlgItemMessage(hDlg, IDC_LIST_DIR, LB_ADDSTRING, 0, (LPARAM)Buffer);
+            }
+            else
+                MessageBox(hDlg, L"列表中已存在相应的父目录", L"提示", MB_OK | MB_ICONINFORMATION);
+        }
 	    return TRUE;
 
     case IDC_BUTTON_REMOVEDIR:
@@ -961,12 +1022,19 @@ static bool Cls_OnInitDialog_filter(HWND hDlg, HWND hwndFocus, LPARAM lParam)
     return true;
 }
 
+void Cls_OnSysCommand(HWND hwnd, UINT cmd, int x, int y)
+{
+    if (cmd == SC_CLOSE)
+        EndDialog(hwnd, 0);
+}
+
 BOOL CALLBACK FilterDialogProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     switch (msg)
     {
         HANDLE_MSG(hDlg, WM_COMMAND,	 Cls_OnCommand_filter);
         HANDLE_MSG(hDlg, WM_CLOSE,		 Cls_OnClose);
+        HANDLE_MSG(hDlg, WM_SYSCOMMAND,	 Cls_OnSysCommand);
         HANDLE_MSG(hDlg, WM_INITDIALOG,  Cls_OnInitDialog_filter);
     }
 
