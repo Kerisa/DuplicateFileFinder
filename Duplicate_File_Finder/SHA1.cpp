@@ -231,7 +231,7 @@ void SHA_1::Sha1ProcessFinal(PSHA1INFO psi, PBYTE pBuffer, PBYTE pResult)
 //  pbHashResult	- 接收结果的缓冲区
 //  iSize			- 缓冲区大小
 //  bContinue		- 终止标志
-//  返回值：0-正常结束， 1-用户终止， -1-无法打开文件, -2-参数错误, -3-???
+//  返回值：0-正常结束， -1-用户终止， -2-无法打开文件, -3-参数错误, -4-???
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 int SHA_1::CalculateSha1(wchar_t *szFileName, CallBack callback)
 {
@@ -305,12 +305,16 @@ int SHA_1::CalculateSha1(wchar_t *szFileName, CallBack callback)
 
 		CloseHandle(hFile);
 		
-        ret = !Continue;
         if (Continue)
+        {
+            ret = S_NO_ERR;
 			ToHexString(pbResultTmp, m_Result, sizeof(m_Result)-2);
+        }
+        else
+            ret = S_TERMINATED;
 	}
     else
-        ret = -1;
+        ret = S_FILE_OPEN_FAILED;
 
     return ret;
 }
@@ -335,7 +339,7 @@ int SHA_1::CalculateSha1 (wchar_t *szFileName, ULONG64 offset, ULONG64 len, Call
             ui.LowPart = GetFileSize(hFile, (PDWORD)&ui.HighPart);
             if (ui.QuadPart < offset + len)
             {
-                ret = -2;
+                ret = S_INVALID_PARAMETER;
                 break;
             }
 
@@ -346,7 +350,7 @@ int SHA_1::CalculateSha1 (wchar_t *szFileName, ULONG64 offset, ULONG64 len, Call
             if (INVALID_SET_FILE_POINTER ==
                 SetFilePointer(hFile, ui.LowPart, (PLONG)&ui.HighPart, FILE_BEGIN))
             {
-                ret = -2;
+                ret = S_INVALID_PARAMETER;
                 break;
             }
 
@@ -355,7 +359,7 @@ int SHA_1::CalculateSha1 (wchar_t *szFileName, ULONG64 offset, ULONG64 len, Call
                 if (!ReadFile(hFile, pbHashBuffer, SHA1_READ_BYTES, &dwBytesRead, NULL)
                     || dwBytesRead != SHA1_READ_BYTES)
                 {
-                    ret = -2;
+                    ret = S_INVALID_PARAMETER;
                     break;
                 }
             }
@@ -364,7 +368,7 @@ int SHA_1::CalculateSha1 (wchar_t *szFileName, ULONG64 offset, ULONG64 len, Call
                 if (!ReadFile(hFile, pbHashBuffer, ctx.uplength, &dwBytesRead, NULL)
                     || dwBytesRead != ctx.uplength)
                 {
-                    ret = -2;
+                    ret = S_INVALID_PARAMETER;
                     break;
                 }
             }
@@ -411,7 +415,7 @@ int SHA_1::CalculateSha1 (wchar_t *szFileName, ULONG64 offset, ULONG64 len, Call
                 ctx.uplength -= iLoop * SHA1_BLOCK_SIZE;
                 if (ctx.uplength < 0)
                 {
-                    ret = -3;
+                    ret = S_ERR_OTHERS;
                     break;
                 }
 
@@ -435,10 +439,15 @@ int SHA_1::CalculateSha1 (wchar_t *szFileName, ULONG64 offset, ULONG64 len, Call
             		
             ret = !Continue;
             if (Continue)
+            {
+                ret = S_OK;
 			    ToHexString(pbResultTmp, m_Result, sizeof(m_Result)-2);
+            }
+            else
+                ret = S_TERMINATED;
 	    }
         else
-            ret = -1;
+            ret = S_FILE_OPEN_FAILED;
     }
     while (0);
 

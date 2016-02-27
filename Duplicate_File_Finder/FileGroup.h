@@ -146,11 +146,11 @@ public:
             Type_PerfectMatch,
             Type_RangeMatch,
 
-            Attrib_ReadOnly = 1,
-            Attrib_System   = 2,
-            Attrib_Hide     = 4,
-            Attrib_Normal   = 8,
-            Attrib_Archive  = 8,
+            Attrib_ReadOnly = FILE_ATTRIBUTE_READONLY,
+            Attrib_System   = FILE_ATTRIBUTE_SYSTEM,
+            Attrib_Hide     = FILE_ATTRIBUTE_HIDDEN,
+            Attrib_Normal   = FILE_ATTRIBUTE_NORMAL,
+            Attrib_Archive  = FILE_ATTRIBUTE_ARCHIVE,
 
             Time_Year       = 1,
             Time_Month      = 2,

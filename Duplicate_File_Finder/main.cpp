@@ -795,7 +795,7 @@ void UpdateFilterConfig(HWND hDlg, FileGroup& fg)
     //------------------------------------------- ÎÄ¼þÊôÐÔ
 
     if (!IsDlgButtonChecked(hDlg, IDC_CHECK_ATTRIB))
-        fg.m_Filter.Switch[FileGroup::FILTER::Search_FileSize] =
+        fg.m_Filter.Switch[FileGroup::FILTER::Search_FileAttribute] =
             FileGroup::FILTER::Type_Off;
     else
     {

@@ -59,6 +59,15 @@ class SHA_1
     void  Sha1ProcessFinal (PSHA1INFO psi, PBYTE pBuffer, PBYTE pResult);
 
 public:
+    enum
+    {
+        S_NO_ERR            =  0,
+        S_TERMINATED        = -1,
+        S_FILE_OPEN_FAILED  = -2,
+        S_INVALID_PARAMETER = -3,
+        S_ERR_OTHERS        = -4,
+    };
+
     typedef bool (_cdecl *CallBack)(const long long * const length, const long long * const uplength);
 
     wchar_t  m_Result[44];
