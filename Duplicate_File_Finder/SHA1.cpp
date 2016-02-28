@@ -437,7 +437,6 @@ int SHA_1::CalculateSha1 (wchar_t *szFileName, ULONG64 offset, ULONG64 len, Call
                 }
             }
             		
-            ret = !Continue;
             if (Continue)
             {
                 ret = S_OK;

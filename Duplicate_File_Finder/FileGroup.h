@@ -121,6 +121,7 @@ public:
     int pHashFiles2SN();
     int pHashFiles1N();
     int pHashFiles0();
+    int PerformHash(const std::wstring& name, std::wstring& result, ULONG64 size = 0);
 
 public:
     
@@ -191,9 +192,18 @@ public:
     friend void LoadFilterConfigToDialog(HWND hDlg, FileGroup& fg);
     friend void UpdateFilterConfig(HWND hDlg, FileGroup& fg);
 
-    std::wstring GetFileSuffix(const std::wstring & name) const
+    bool GetFileSuffix(const std::wstring & name, std::wstring& result) const
     {
-        return std::wstring(name, name.rfind(L'.'));
+        bool ret = false;
+
+        std::wstring::size_type pos = name.rfind(L'.');
+        if (pos != std::wstring::npos)
+        {
+            result = std::wstring(name, pos+1);
+            ret = true;
+        }
+
+        return ret;
     }
 };
 

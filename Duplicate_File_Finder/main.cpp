@@ -47,10 +47,10 @@ int my_ListView_GetCheckedCount(HWND hList)
 	return ret;
 }
 
-#define UpdateStatusPart1() { \
+#define UpdateStatusPart1() do{ \
 	StringCbPrintf(szBuffer, MAX_PATH1, TEXT("选中文件:%d  /  文件总数:%d"),\
 	    my_ListView_GetCheckedCount(hList), ListView_GetItemCount(hList)); \
-	SendMessage(hStatus, SB_SETTEXT, 1, (LPARAM)szBuffer); }
+	SendMessage(hStatus, SB_SETTEXT, 1, (LPARAM)szBuffer); }while(0)
 
 
 int iClickItem;
@@ -154,18 +154,6 @@ static bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
         DialogBox(g_hInstance, MAKEINTRESOURCE(IDD_FILTER), hDlg, FilterDialogProc);
         return TRUE;
 
-    case IDB_SEARCH:
-	    //if (params.szFolderName[0] != '\0')
-	    //{
-		   // SetNewParam(hwnd, &params);
-				
-		   // hThread = CreateThread(NULL, 0, Thread, &params, 0, NULL);
-		   // if (hThread == INVALID_HANDLE_VALUE)
-			  //  MessageBox(hwnd, TEXT("线程创建失败！"), 0, MB_ICONERROR);
-	    //}
-	    //else
-		   // SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)TEXT("请选择搜索目录"));
-	    return TRUE;
 
     case IDB_START:
         ListView_DeleteAllItems(hList);
@@ -209,9 +197,6 @@ static bool Cls_OnInitDialog(HWND hDlg, HWND hwndFocus, LPARAM lParam)
 
     int setpart[2];
 
-    //g_hDlgFilter = CreateDialog(g_hInstance, 
-    //    MAKEINTRESOURCE(IDD_FILTER), hDlg, FilterDialogProc);
-
     // 加载图标
     SendMessage(hDlg, WM_SETICON, ICON_BIG,
 		    (LPARAM)LoadIcon((HINSTANCE)GetWindowLong(hDlg, GWL_HINSTANCE), MAKEINTRESOURCE(IDI_ICON64)));
@@ -229,11 +214,6 @@ static bool Cls_OnInitDialog(HWND hDlg, HWND hwndFocus, LPARAM lParam)
     hStatus = CreateStatusWindow(WS_CHILD | WS_VISIBLE, NULL, hDlg, ID_STATUSBAR);
     setpart[0] = 800;  setpart[1] = -1;
     SendMessage(hStatus, SB_SETPARTS, 2, (LPARAM)setpart);
-
-    // 初始化线程函数参数
-    //RtlZeroMemory(params.szFolderName, MAX_PATH1);
-    //params.bOptions			= 0;
-    //params.bTerminate		= FALSE;
 
     // 初始化按钮状态
     CheckDlgButton(hDlg, IDC_NEEDHASH, BST_CHECKED);
@@ -320,8 +300,6 @@ BOOL CALLBACK MainDlgProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam)
 
 static void EnableControls(HWND hDlg, int id, bool enable)
 {
-    //CheckDlgButton(hDlg, id, enable);
-
     switch (id)
     {
     case IDC_CHECK_NAME:
@@ -369,6 +347,7 @@ static void EnableControls(HWND hDlg, int id, bool enable)
         EnableWindow(GetDlgItem(hDlg, IDC_CHECK_ATTR_R), enable);
         EnableWindow(GetDlgItem(hDlg, IDC_CHECK_ATTR_S), enable);
         EnableWindow(GetDlgItem(hDlg, IDC_CHECK_ATTR_H), enable);
+        EnableWindow(GetDlgItem(hDlg, IDC_CHECK_ATTR_N), enable);
         break;
 
     default:
@@ -443,7 +422,7 @@ void LoadFilterConfigToDialog(HWND hDlg, FileGroup& fg)
 {
     TCHAR Buffer[MAX_PATH];
 
-    // 文件名
+    //------------------------------------------- 文件名
 
     if (fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileName]
         == FileGroup::FILTER::Type_Off)
@@ -548,7 +527,9 @@ void LoadFilterConfigToDialog(HWND hDlg, FileGroup& fg)
                 fg.m_Filter.FileDataRange.UpperBound);
             SetDlgItemText(hDlg, IDC_EDIT_DATAEND, Buffer);
 
-            // 单位
+            
+            SendDlgItemMessage(hDlg, IDC_COMBO_DATAFRONT, CB_SETCURSEL,
+                fg.m_Filter.FileDataRange.Inverted, 0);
         }
     }
 
@@ -561,10 +542,13 @@ void LoadFilterConfigToDialog(HWND hDlg, FileGroup& fg)
     else
     {
         std::vector<std::wstring>::iterator it = fg.m_Filter.ContainSuffix.begin();
-        std::wstring str = std::wstring((*it++));
-        for (; it != fg.m_Filter.ContainSuffix.end(); ++it)
-            (str += L" | ") += (*it);
-        SetDlgItemText(hDlg, IDC_COMBO_TYPEINC, str.c_str());
+        if (it != fg.m_Filter.ContainSuffix.end())
+        {
+            std::wstring str = std::wstring((*it++));
+            for (; it != fg.m_Filter.ContainSuffix.end(); ++it)
+                (str += L" | ") += (*it);
+            SetDlgItemText(hDlg, IDC_COMBO_TYPEINC, str.c_str());
+        }
     }
 
     //------------------------------------------- 忽视的扩展名
@@ -576,10 +560,13 @@ void LoadFilterConfigToDialog(HWND hDlg, FileGroup& fg)
     else
     {
         std::vector<std::wstring>::iterator it = fg.m_Filter.IgnoreSuffix.begin();
-        std::wstring str = std::wstring((*it++));
-        for (; it != fg.m_Filter.IgnoreSuffix.end(); ++it)
-            (str += L" | ") += (*it);
-        SetDlgItemText(hDlg, IDC_COMBO_TYPEIGN, str.c_str());
+        if (it != fg.m_Filter.IgnoreSuffix.end())
+        {
+            std::wstring str = std::wstring((*it++));
+            for (; it != fg.m_Filter.IgnoreSuffix.end(); ++it)
+                (str += L" | ") += (*it);
+            SetDlgItemText(hDlg, IDC_COMBO_TYPEIGN, str.c_str());
+        }
     }
 
     //------------------------------------------- 查找的文件大小范围
@@ -627,6 +614,7 @@ void LoadFilterConfigToDialog(HWND hDlg, FileGroup& fg)
         CheckDlgButton(hDlg, IDC_CHECK_ATTR_R, fg.m_Filter.SelectedAttributes & FileGroup::FILTER::Attrib_ReadOnly);
         CheckDlgButton(hDlg, IDC_CHECK_ATTR_S, fg.m_Filter.SelectedAttributes & FileGroup::FILTER::Attrib_System);
         CheckDlgButton(hDlg, IDC_CHECK_ATTR_H, fg.m_Filter.SelectedAttributes & FileGroup::FILTER::Attrib_Hide);
+        CheckDlgButton(hDlg, IDC_CHECK_ATTR_N, fg.m_Filter.SelectedAttributes & FileGroup::FILTER::Attrib_Normal);
     }
 
     //------------------------------------------- 查找的目录
@@ -636,19 +624,19 @@ void LoadFilterConfigToDialog(HWND hDlg, FileGroup& fg)
     for (it=fg.m_Filter.SearchDirectory.begin(); it!=fg.m_Filter.SearchDirectory.end(); ++it)
     {
         str.clear();
-        //StringCchPrintf(Buffer, MAX_PATH, L"[%d]", it->second);
-        //str += Buffer;
         str += it->first;
         SendDlgItemMessage(hDlg, IDC_LIST_DIR, LB_ADDSTRING, 0, (LPARAM)str.c_str());
     }
 
 }
 
+
+
 void UpdateFilterConfig(HWND hDlg, FileGroup& fg)
 {
     TCHAR Buffer[MAX_PATH];
 
-    // 文件名
+    //------------------------------------------- 文件名
 
     if (!IsDlgButtonChecked(hDlg, IDC_CHECK_NAME))
         fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileName] =
@@ -733,6 +721,9 @@ void UpdateFilterConfig(HWND hDlg, FileGroup& fg)
             fg.m_Filter.FileDataRange.LowerBound = _wtoi(Buffer);
             GetDlgItemText(hDlg, IDC_EDIT_DATAEND, Buffer, MAX_PATH);
             fg.m_Filter.FileDataRange.UpperBound = _wtoi(Buffer);
+
+            int idx = SendDlgItemMessage(hDlg, IDC_COMBO_DATAFRONT, CB_GETCURSEL, 0, 0);
+            fg.m_Filter.FileDataRange.Inverted = (bool)idx;
         }
     }
 
@@ -743,10 +734,9 @@ void UpdateFilterConfig(HWND hDlg, FileGroup& fg)
                 FileGroup::FILTER::Type_Off;
 
     int idx;
-    if ((idx = SendDlgItemMessage(hDlg, IDC_COMBO_TYPEINC, CB_GETCURSEL, 0, 0))
-        != CB_ERR && idx != 0)
+    if ((idx = SendDlgItemMessage(hDlg, IDC_COMBO_TYPEINC, CB_GETCURSEL, 0, 0)) != CB_ERR)
     {
-        LoadString(g_hInstance, idx+IDS_STRING102, Buffer, MAX_PATH);
+        LoadString(g_hInstance, idx+IDS_STRING103, Buffer, MAX_PATH);
         SplitString(Buffer, fg.m_Filter.ContainSuffix, L"|", L'(', L')', true);
         fg.m_Filter.Switch[FileGroup::FILTER::Search_IncludeSuffix] =
                 FileGroup::FILTER::Type_On;
@@ -759,18 +749,16 @@ void UpdateFilterConfig(HWND hDlg, FileGroup& fg)
             fg.m_Filter.Switch[FileGroup::FILTER::Search_IncludeSuffix] =
                 FileGroup::FILTER::Type_On;
     }
-    else if (idx == 0)
-        fg.m_Filter.ContainSuffix.clear();
+    
 
     //------------------------------------------- 忽略类型
 
     fg.m_Filter.IgnoreSuffix.clear();
     fg.m_Filter.Switch[FileGroup::FILTER::Search_IgnoreSuffix] = FileGroup::FILTER::Type_Off;
 
-    if ((idx = SendDlgItemMessage(hDlg, IDC_COMBO_TYPEIGN, CB_GETCURSEL, 0, 0))
-        != CB_ERR && idx != 0)
+    if ((idx = SendDlgItemMessage(hDlg, IDC_COMBO_TYPEIGN, CB_GETCURSEL, 0, 0)) != CB_ERR)
     {
-        LoadString(g_hInstance, idx+IDS_STRING102, Buffer, MAX_PATH);
+        LoadString(g_hInstance, idx+IDS_STRING103, Buffer, MAX_PATH);
         SplitString(Buffer, fg.m_Filter.IgnoreSuffix, L"|", L'(', L')', true);
         fg.m_Filter.Switch[FileGroup::FILTER::Search_IgnoreSuffix] = FileGroup::FILTER::Type_On;
     }
@@ -781,8 +769,7 @@ void UpdateFilterConfig(HWND hDlg, FileGroup& fg)
         if (fg.m_Filter.IgnoreSuffix.size() > 0)
             fg.m_Filter.Switch[FileGroup::FILTER::Search_IgnoreSuffix] = FileGroup::FILTER::Type_On;
     }
-    else if (idx == 0)
-        fg.m_Filter.IgnoreSuffix.clear();
+
 
     //------------------------------------------- 文件大小范围
 
@@ -824,6 +811,8 @@ void UpdateFilterConfig(HWND hDlg, FileGroup& fg)
             FileGroup::FILTER::Attrib_System : 0;
         fg.m_Filter.SelectedAttributes |= IsDlgButtonChecked(hDlg, IDC_CHECK_ATTR_H) ?
             FileGroup::FILTER::Attrib_Hide : 0;
+        fg.m_Filter.SelectedAttributes |= IsDlgButtonChecked(hDlg, IDC_CHECK_ATTR_N) ?
+            FileGroup::FILTER::Attrib_Normal : 0;
     }
 
     //------------------------------------------- 搜索路径
@@ -848,7 +837,7 @@ void UpdateFilterConfig(HWND hDlg, FileGroup& fg)
             if (Buffer[len-1] == L'\\')     // 选择分区根目录时最后为反斜杠
                 Buffer[len-1] = L'\0';
             fg.m_Filter.SearchDirectory.insert(
-                std::make_pair(std::wstring(Buffer), 0/*times*/));
+                std::make_pair(std::wstring(Buffer), -1/*times*/));
         }
     }
 }
@@ -969,39 +958,39 @@ static bool Cls_OnInitDialog_filter(HWND hDlg, HWND hwndFocus, LPARAM lParam)
 
     hCombo = GetDlgItem(hDlg, IDC_COMBO_DATAFRONT);
     SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"最前");
-    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"最后");
+    SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"最后");
 
-    hCombo = GetDlgItem(hDlg, IDC_COMBO_DATAUNIT);
-    SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"B");
-    SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"KB");
-    SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"MB");
-    SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"GB");
-    SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"TB");
-    SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"PB");
-    SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"EB");
+    //hCombo = GetDlgItem(hDlg, IDC_COMBO_DATAUNIT);
+    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"B");
+    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"KB");
+    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"MB");
+    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"GB");
+    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"TB");
+    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"PB");
+    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"EB");
 
-    hCombo = GetDlgItem(hDlg, IDC_COMBO_SIZEUNIT);
-    SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"B");
-    SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"KB");
-    SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"MB");
-    SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"GB");
-    SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"TB");
-    SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"PB");
-    SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"EB");
+    //hCombo = GetDlgItem(hDlg, IDC_COMBO_SIZEUNIT);
+    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"B");
+    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"KB");
+    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"MB");
+    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"GB");
+    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"TB");
+    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"PB");
+    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"EB");
 
-    hCombo = GetDlgItem(hDlg, IDC_COMBO_SUBDIR);
-    SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"所有子文件夹");
-    SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"当前文件夹");
-    for (int i=1; i<100; ++i)
-    {
-        StringCchPrintf(Buffer, MAX_PATH, L"%d", i);
-        SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)Buffer);
-    }
-    SetDlgItemText(hDlg, IDC_COMBO_SUBDIR, L"所有子文件夹");
+    //hCombo = GetDlgItem(hDlg, IDC_COMBO_SUBDIR);
+    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"所有子文件夹");
+    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"当前文件夹");
+    //for (int i=1; i<100; ++i)
+    //{
+    //    StringCchPrintf(Buffer, MAX_PATH, L"%d", i);
+    //    SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)Buffer);
+    //}
+    //SetDlgItemText(hDlg, IDC_COMBO_SUBDIR, L"所有子文件夹");
 
     hCombo = GetDlgItem(hDlg, IDC_COMBO_TYPEINC);
     hCombo1 = GetDlgItem(hDlg, IDC_COMBO_TYPEIGN);
-    for (UINT i=IDS_STRING102; i<=IDS_STRING107; ++i)
+    for (UINT i=IDS_STRING103; i<=IDS_STRING107; ++i)
     {
         LoadString(g_hInstance, i, Buffer, MAX_PATH);
         SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)Buffer);
@@ -1059,72 +1048,6 @@ DWORD WINAPI Thread(PVOID pvoid)
 
     return 0;
 }
-/*
-	// 生成FILEINFO结构的指针以便排序
-	if (NULL == (hGlobalI = GlobalAlloc(GPTR, sizeof(DWORD)*dwFileNum))
-		|| NULL == (arrdwIndex = (DWORD*)GlobalLock(hGlobalI)))
-	{
-		MessageBox(0, TEXT("内存分配错误，线程中止！"), 0, MB_ICONERROR);
-		ThreadEndRoutine(lpFileInfoList, INVALID_HANDLE_VALUE);
-		return 0;
-	}
-
-	for (i=0; i<dwFileNum; ++i)
-	{
-		arrdwIndex[i] = (DWORD)(lpFileInfoList + i*sizeof(FILEINFO));
-	}
-
-	if (dwFileNum == 0			// 空文件夹
-		|| !(dwMatchedNum = Seclect((PFILEINFO *)arrdwIndex, dwFileNum, pparams->bOptions)))	// 没有匹配文件		
-	{
-		SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)TEXT("找不到满足条件的文件"));
-		ThreadEndRoutine(lpFileInfoList, hGlobalI);
-		return 0;
-	}
-	
-	// 计算哈希
-	//if (pparams->bOptions & 0x8)	// 需要哈希
-	//{
-	//	for (i=0;!pparams->bTerminate && i<dwMatchedNum; ++i)
-	//	{
-	//		StringCbPrintf(szBuffer, 64, TEXT("计算文件哈希(%d/%d)..."), i+1, dwMatchedNum);
-	//		SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)szBuffer);
-	//		StringCbCopy(szBuffer, MAX_PATH1, ((PFILEINFO)(arrdwIndex[i]))->szPath);
-	//		StringCbCat(szBuffer, MAX_PATH1, TEXT("\\"));
-	//		StringCbCat(szBuffer, MAX_PATH1, ((PFILEINFO)(arrdwIndex[i]))->wfd.cFileName);
-	//		if (((PFILEINFO)(arrdwIndex[i]))->wfd.nFileSizeHigh > pparams->dwHashSizeHigh		// 过滤文件大小
-	//			|| ((PFILEINFO)(arrdwIndex[i]))->wfd.nFileSizeLow > pparams->dwHashSizeLow)
-	//			continue;
-	//		CalculateSha1(szBuffer, ((PFILEINFO)(arrdwIndex[i]))->SHA1, 128, !pparams->bTerminate);
-	//	}
-	//}
-
-	//if (!pparams->bTerminate)
-	//{
-	//	StringCbPrintf(szBuffer, 64, TEXT("计算文件哈希(%d/%d)...完成"), dwMatchedNum, dwMatchedNum);
-	//	SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)szBuffer);
-	//	if (!(pparams->bOptions & 0x7))		// 三个“相同”的选项都没选，按Hash结果筛选相同的文件
-	//	{
-	//		pparams->bOptions |= 0x10;
-	//		Seclect((PFILEINFO *)arrdwIndex, dwFileNum, pparams->bOptions);
-	//	}
-
-	//	ListView_DeleteAllItems(hList);
-	//	for (i=0; i<dwMatchedNum; ++i)		// 显示
-	//	{
-	//		InsertListViewItem(hList, (PFILEINFO)arrdwIndex[i], i);
-	//	}
-	//	SelectSameHash(hList);				// 勾上相同Hash值的文件
-	//	
-	//	UpdateStatusPart1();
-	//}
-	//else
-	//	SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)TEXT("用户终止"));
-
-	//ThreadEndRoutine(lpFileInfoList, hGlobalI);
-	return 0;
-}*/
-
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////
