@@ -10,46 +10,15 @@
 #include <map>
 #include <vector>
 #include <Strsafe.h>
-#include <ShlObj.h>
-#include <Commdlg.h>
-#include <CommCtrl.h>
 #include "Sha1.h"
-#include "resource.h"
 
 
-#pragma comment (lib, "Comctl32.lib")
-
-#define ID_STATUSBAR 1032
-#define ID_HEADER    1030
-#define ID_LISTVIEW  1031
-#define MAX_PATH1	 1024
-
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 class FileGroup;
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-DWORD WINAPI	Thread(PVOID);				// 声明
-DWORD WINAPI	ThreadHashOnly(PVOID);
-BOOL  CALLBACK	MainDlgProc(HWND, UINT, WPARAM, LPARAM);
-BOOL  CALLBACK	FilterDialogProc(HWND, UINT, WPARAM, LPARAM);
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-void OpenFolder(HWND hwnd, PTSTR pReceive);
-BOOL InitListViewColumns(HWND hList);
-//BOOL SetNewParam(HWND hwnd, PPARAMS p);
-int SelectSameHash(HWND hList);
-//DWORD Seclect(PFILEINFO pfi[], DWORD dwFileNum, BYTE bOptions);
-//void ThreadEndRoutine(PBYTE lpVirMem, HGLOBAL hIndex);
-int DelDifferentHash(HWND hList);
-
-void LoadFilterConfigToDialog(HWND hDlg, FileGroup& fg);
-void UpdateFilterConfig(HWND hDlg, FileGroup& fg);
 
 
 class PerformanceAnalyse
 {
 };
-
 
 
 class FileGroup
@@ -70,30 +39,10 @@ public:
     typedef struct _FileInfo
     {
         ULONG64 Size;
-        SYSTEMTIME st;
+        FILETIME CreationTime;
+        FILETIME LastWriteTime;
         std::wstring Path;
         std::wstring Name;
-        //wchar_t      Sha1[42];
-
-        _FileInfo(ULONG64 size, PSYSTEMTIME pst, const std::wstring& path, std::wstring& name, wchar_t *sha1 = 0)
-            : Size(size)
-        {
-            Path = std::wstring(path);
-            Name = std::wstring(name);
-            st = *pst;
-            //if (sha1)
-            //    wcscpy_s(sha1, _countof(sha1), sha1);
-            //else
-            //    sha1[0] = l'\0';
-        }
-
-        _FileInfo(ULONG64 size, PSYSTEMTIME pst, const std::wstring& path, wchar_t *name, wchar_t *sha1 = 0)
-        {
-             _FileInfo(size, pst, path, std::wstring(name), sha1);
-        }
-
-        _FileInfo() {}
-        
     }
     FileInfo, *pFileInfo;
 
@@ -112,31 +61,38 @@ public:
     // 哈希 - 对以上结果使用哈希 (勾上哈希时同时勾上“大小”)
     std::map<std::wstring, std::vector<pFileInfo>>                           m_List1H;
     
-
+    
+    // 根据过滤条件确定使用何种容器存储临时数据
     int m_StoreType;
     
-    int pFindFiles(const std::wstring& dirPath, int depth);
+    int pFindFiles (const std::wstring& dirPath, int depth);
 
-    int pHashFiles1S();
-    int pHashFiles2SN();
-    int pHashFiles1N();
-    int pHashFiles0();
-    int PerformHash(const std::wstring& name, std::wstring& result, ULONG64 size = 0);
+    // 筛选出容器中满足其他条件的文件进行哈希
+    int pHashFiles1S  ();
+    int pHashFiles2SN ();
+    int pHashFiles1N  ();
+    int pHashFiles0   ();
+
+    // 根据条件选择哈希方式
+    int PerformHash (const std::wstring& name, std::wstring& result, ULONG64 size = 0);
+    
+    // 根据文件时间生成一个标记
+    ULONG64 pMakeSimpleTime (PSYSTEMTIME pst);
 
 public:
     
 	struct FILTER
     {
         enum {
-            Compare_FileName,
-            Compare_FileSize,
-            Compare_FileDate,
-            Compare_FileHash,
-            Search_FileAttribute,
-            Search_FileSize,
-            Search_IgnoreSuffix,
-            Search_IncludeSuffix,
-            Search_IncludeZip,
+            Compare_FileName,       // 比较文件名
+            Compare_FileSize,       // 比较大小
+            Compare_FileDate,       // 比较日期
+            Compare_FileHash,       // 比较数据
+            Search_FileAttribute,   // 文件属性过滤
+            Search_FileSize,        // 文件大小过滤
+            Search_IgnoreSuffix,    // 文件类型过滤1
+            Search_IncludeSuffix,   // 文件类型过滤2
+            Search_IncludeZip,      // 搜索Zip压缩包
             RuleSwitchEnd,
 
             Type_Off = 0,
@@ -144,7 +100,6 @@ public:
             Type_Ignore,
             Type_Include,
             Type_Whole,
-            Type_PerfectMatch,
             Type_RangeMatch,
 
             Attrib_ReadOnly = FILE_ATTRIBUTE_READONLY,
@@ -159,52 +114,35 @@ public:
             Time_Week       = 8,
         };
 
-        int Switch[RuleSwitchEnd];
+        int   Switch[RuleSwitchEnd];
         DWORD SelectedAttributes;
         DWORD SelectedDate;
-        int FileNameWithoutSuffix;
+        int   FileNameWithoutSuffix;
         struct {
             ULONG64 UpperBound;
             ULONG64 LowerBound; // 1 based (not zero)
             bool    Inverted;
         } FileNameRange, FileSizeRange, FileDataRange;
 
-        std::wstring KeyWordOfFileName;
-        std::vector<std::wstring> IgnoreSuffix;
-        std::vector<std::wstring> ContainSuffix;
-        std::map<std::wstring, int> SearchDirectory;
+        std::wstring                KeyWordOfFileName;  // 文件名中包含的关键字
+        std::vector<std::wstring>   IgnoreSuffix;       // 忽略的后缀名
+        std::vector<std::wstring>   ContainSuffix;      // 包含的后缀名
+        std::map<std::wstring, int> SearchDirectory;    // 查找目录
     } m_Filter;
 
     FileGroup();
+    void    InitFilter       ();
+    bool    GetFileSuffix    (const std::wstring & name, std::wstring& result) const;
+    int     FindFiles        (const std::wstring& dirPath, int depth);
+    int     HashFiles        ();
+    int     ExportData       ();
+    bool    IsFileMatched    (const std::wstring & path, const PWIN32_FIND_DATA pwfd);
+    int     StoreMatchedFile (const std::wstring & path, const PWIN32_FIND_DATA pwfd);
+    int     StartSearchFiles ();
 
-    void InitFilter();
-    int FindFiles(const std::wstring& dirPath, int depth);
-    //int CheckFilter();
-    int HashFiles();
-    int ExportData();
-    ULONG64 MakeSimpleTime(PSYSTEMTIME pst);
-    bool IsFileMatched   (const std::wstring & path, const PWIN32_FIND_DATA pwfd);
-    int  StoreMatchedFile(const std::wstring & path, const PWIN32_FIND_DATA pwfd);
-    int StartSearchFiles();
-
-    //friend void InsertListViewItem(FileGroup::pFileInfo pfi);
-    friend void InsertListViewItem(FileGroup::pFileInfo pfi, std::wstring* phash = 0);
-    friend void LoadFilterConfigToDialog(HWND hDlg, FileGroup& fg);
-    friend void UpdateFilterConfig(HWND hDlg, FileGroup& fg);
-
-    bool GetFileSuffix(const std::wstring & name, std::wstring& result) const
-    {
-        bool ret = false;
-
-        std::wstring::size_type pos = name.rfind(L'.');
-        if (pos != std::wstring::npos)
-        {
-            result = std::wstring(name, pos+1);
-            ret = true;
-        }
-
-        return ret;
-    }
+    friend void InsertListViewItem       (FileGroup::pFileInfo pfi, std::wstring* phash = 0);
+    friend void LoadFilterConfigToDialog (HWND hDlg, FileGroup& fg);
+    friend void UpdateFilterConfig       (HWND hDlg, FileGroup& fg);
 };
 
 

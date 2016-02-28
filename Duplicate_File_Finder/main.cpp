@@ -1,13 +1,31 @@
-#include "FileGroup.h"
 
 #include <Windows.h>
 #include <WindowsX.h>
+#include <Commdlg.h>
+#include <CommCtrl.h>
+#include "FileGroup.h"
+#include "functions.h"
+#include "resource.h"
 
-HMENU		hMenu;							 // 全局变量
-HWND		hList, hCombo, hStatus, g_hDlgFilter;
+#pragma comment (lib, "Comctl32.lib")
+
+#define ID_STATUSBAR 1032
+#define ID_HEADER    1030
+#define ID_LISTVIEW  1031
+#define MAX_PATH1	 1024
+
+HMENU		g_hMenu;							 // 全局变量
+HWND		g_hList, g_hStatus, g_hDlgFilter;
 HINSTANCE	g_hInstance;
 HANDLE      g_ThreadSignal, g_hThread;
 FileGroup   g_FileGroup;
+
+
+DWORD WINAPI    Thread          (PVOID pvoid);
+DWORD WINAPI    ThreadHashOnly  (PVOID pvoid);
+BOOL  CALLBACK  MainDlgProc     (HWND, UINT, WPARAM, LPARAM);
+BOOL  CALLBACK  FilterDialogProc(HWND, UINT, WPARAM, LPARAM);
+
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPreInstance,
 					  PSTR pCmdLine, int iCmdShow)
@@ -36,24 +54,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPreInstance,
 	return 0;
 }
 
-int my_ListView_GetCheckedCount(HWND hList)
-{
-	int i, ret = 0;
-	for (i=ListView_GetItemCount(hList)-1; i>=0; --i)
-	{
-		if (ListView_GetCheckState(hList, i))
-			++ret;
-	}
-	return ret;
-}
 
-#define UpdateStatusPart1() do{ \
-	StringCbPrintf(szBuffer, MAX_PATH1, TEXT("选中文件:%d  /  文件总数:%d"),\
-	    my_ListView_GetCheckedCount(hList), ListView_GetItemCount(hList)); \
-	SendMessage(hStatus, SB_SETTEXT, 1, (LPARAM)szBuffer); }while(0)
-
-
-int iClickItem;
+static int iClickItem;
 
 static bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
 {
@@ -64,9 +66,9 @@ static bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
     case IDM_OPENFILE:
     case IDM_DELETE:	
 	    // 获取全路径
-	    ListView_GetItemText(hList, iClickItem, 1, szBuffer, MAX_PATH1);
+	    ListView_GetItemText(g_hList, iClickItem, 1, szBuffer, MAX_PATH1);
 	    StringCbCat(szBuffer, MAX_PATH1, TEXT("\\"));
-	    ListView_GetItemText(hList, iClickItem, 0, szBuffer1, MAX_PATH1);
+	    ListView_GetItemText(g_hList, iClickItem, 0, szBuffer1, MAX_PATH1);
 	    StringCbCat(szBuffer, MAX_PATH1, szBuffer1);
 
 	    if (id == IDM_OPENFILE)
@@ -81,8 +83,8 @@ static bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
 		    DeleteFile(szBuffer);
 		    if (! GetLastError())
 		    {
-			    ListView_DeleteItem(hList, iClickItem);
-			    UpdateStatusPart1();
+			    ListView_DeleteItem(g_hList, iClickItem);
+			    UpdateStatusBar(1, 0);
 		    }
 		    else
                 MessageBox(hDlg, TEXT("无法删除文件，请手动删除"), TEXT("提示"), MB_ICONEXCLAMATION);
@@ -90,7 +92,7 @@ static bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
 	    return TRUE;
 
     case IDM_EXPLORER:
-	    ListView_GetItemText(hList, iClickItem, 1, szBuffer, MAX_PATH1);
+	    ListView_GetItemText(g_hList, iClickItem, 1, szBuffer, MAX_PATH1);
 	    ShellExecute(0, 0, szBuffer, 0, 0, SW_SHOW);
 	    return TRUE;
 
@@ -99,28 +101,28 @@ static bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
 			    MB_YESNO | MB_DEFBUTTON2 | MB_ICONWARNING))
 			    return TRUE;
 
-	    for (int i=ListView_GetItemCount(hList)-1; i>=0; --i)
-		    if (ListView_GetCheckState(hList, i) == TRUE)
+	    for (int i=ListView_GetItemCount(g_hList)-1; i>=0; --i)
+		    if (ListView_GetCheckState(g_hList, i) == TRUE)
 		    {
-			    ListView_GetItemText(hList, i, 1, szBuffer, MAX_PATH1);
+			    ListView_GetItemText(g_hList, i, 1, szBuffer, MAX_PATH1);
 			    StringCbCat(szBuffer, MAX_PATH1, TEXT("\\"));
-			    ListView_GetItemText(hList, i, 0, szBuffer1, MAX_PATH1);
+			    ListView_GetItemText(g_hList, i, 0, szBuffer1, MAX_PATH1);
 			    StringCbCat(szBuffer, MAX_PATH1, szBuffer1);
 			    DeleteFile(szBuffer);
 			    if (!GetLastError())
-				    ListView_DeleteItem(hList, i);
+				    ListView_DeleteItem(g_hList, i);
 			    else
 			    {
 				    StringCbPrintf(szBuffer1, MAX_PATH1, TEXT("无法删除文件%s，请手动删除"), szBuffer);
-				    SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)szBuffer1);
+				    SendMessage(g_hStatus, SB_SETTEXT, 0, (LPARAM)szBuffer1);
 			    }
 		    }
 	    return TRUE;
 
     case IDM_REMOVE:
-	    StringCbPrintf(szBuffer, MAX_PATH1, TEXT("已移除%d项"), DelDifferentHash(hList));
-	    SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)szBuffer);
-	    UpdateStatusPart1();
+	    StringCbPrintf(szBuffer, MAX_PATH1, TEXT("已移除%d项"), DelDifferentHash(g_hList));
+	    SendMessage(g_hStatus, SB_SETTEXT, 0, (LPARAM)szBuffer);
+	    UpdateStatusBar(1, 0);
 	    return TRUE;
 
     case IDM_HASHALL:
@@ -129,20 +131,20 @@ static bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
 	    return TRUE;
 
     case IDM_SELALL:
-	    for (int i=ListView_GetItemCount(hList)-1; i>=0; --i)
-		    ListView_SetCheckState(hList, i, TRUE);
-	    UpdateStatusPart1();
+	    for (int i=ListView_GetItemCount(g_hList)-1; i>=0; --i)
+		    ListView_SetCheckState(g_hList, i, TRUE);
+	    UpdateStatusBar(1, 0);
 	    return TRUE;
 
     case IDM_USELALL:
-	    for (int i=ListView_GetItemCount(hList); i>=0; --i)
-		    ListView_SetCheckState(hList, i, FALSE);
-	    UpdateStatusPart1();
+	    for (int i=ListView_GetItemCount(g_hList); i>=0; --i)
+		    ListView_SetCheckState(g_hList, i, FALSE);
+	    UpdateStatusBar(1, 0);
 	    return TRUE;
 
     case IDM_SELSAMEHASH:
-	    SelectSameHash(hList);
-	    UpdateStatusPart1();
+	    SelectSameHash(g_hList);
+	    UpdateStatusBar(1, 0);
 	    return TRUE;
     //----------------------------------------------------------------------------------------------------
     case IDC_NEEDHASH:
@@ -156,7 +158,7 @@ static bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
 
 
     case IDB_START:
-        ListView_DeleteAllItems(hList);
+        ListView_DeleteAllItems(g_hList);
         SetEvent(g_ThreadSignal);
         return TRUE;
 
@@ -165,7 +167,7 @@ static bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
 	    //{
 		   // SuspendThread(hThread);
 		   // SetDlgItemText(hwnd, IDB_PAUSE, TEXT("继续(&R)"));
-		   // SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)TEXT("暂停"));
+		   // SendMessage(g_hStatus, SB_SETTEXT, 0, (LPARAM)TEXT("暂停"));
 	    //}
 	    //else
 	    //{
@@ -179,17 +181,19 @@ static bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
 	    //params.bTerminate = TRUE;
 	    //if (bPaused)
 		   // ResumeThread(hThread);
-	    //SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)TEXT("用户终止"));
+	    //SendMessage(g_hStatus, SB_SETTEXT, 0, (LPARAM)TEXT("用户终止"));
 	    return TRUE;
     }
 
     return FALSE;
 }
 
+
 static void Cls_OnClose(HWND hDlg)
 {
     EndDialog(hDlg, 0);
 }
+
 
 static bool Cls_OnInitDialog(HWND hDlg, HWND hwndFocus, LPARAM lParam)
 {
@@ -202,18 +206,18 @@ static bool Cls_OnInitDialog(HWND hDlg, HWND hwndFocus, LPARAM lParam)
 		    (LPARAM)LoadIcon((HINSTANCE)GetWindowLong(hDlg, GWL_HINSTANCE), MAKEINTRESOURCE(IDI_ICON64)));
 
     // 初始化List View
-    hList = CreateWindowEx(0, WC_LISTVIEW, NULL,
+    g_hList = CreateWindowEx(0, WC_LISTVIEW, NULL,
 				    LVS_REPORT | WS_CHILD | WS_VISIBLE | WS_BORDER,
 				    cListViewPos[0], cListViewPos[1], cListViewPos[2], cListViewPos[3],
 				    hDlg, (HMENU)ID_LISTVIEW, (HINSTANCE)GetWindowLong(hDlg, GWL_HINSTANCE), NULL);
-    ListView_SetExtendedListViewStyleEx(hList, 0, LVS_EX_GRIDLINES | LVS_EX_CHECKBOXES | LVS_EX_FULLROWSELECT);
-    if (!InitListViewColumns(hList))
+    ListView_SetExtendedListViewStyleEx(g_hList, 0, LVS_EX_GRIDLINES | LVS_EX_CHECKBOXES | LVS_EX_FULLROWSELECT);
+    if (!InitListViewColumns(g_hList))
 	    EndDialog(hDlg, 0);
 		
     // 初始化 Status Bar
-    hStatus = CreateStatusWindow(WS_CHILD | WS_VISIBLE, NULL, hDlg, ID_STATUSBAR);
+    g_hStatus = CreateStatusWindow(WS_CHILD | WS_VISIBLE, NULL, hDlg, ID_STATUSBAR);
     setpart[0] = 800;  setpart[1] = -1;
-    SendMessage(hStatus, SB_SETPARTS, 2, (LPARAM)setpart);
+    SendMessage(g_hStatus, SB_SETPARTS, 2, (LPARAM)setpart);
 
     // 初始化按钮状态
     CheckDlgButton(hDlg, IDC_NEEDHASH, BST_CHECKED);
@@ -221,15 +225,16 @@ static bool Cls_OnInitDialog(HWND hDlg, HWND hwndFocus, LPARAM lParam)
     SetDlgItemInt (hDlg, IDC_FILESIZE, 50, FALSE);
 
     // 加载右键菜单
-    hMenu = LoadMenu(g_hInstance, MAKEINTRESOURCE(IDR_MENU1));
-    hMenu = GetSubMenu(hMenu, 0);
+    g_hMenu = LoadMenu(g_hInstance, MAKEINTRESOURCE(IDR_MENU1));
+    g_hMenu = GetSubMenu(g_hMenu, 0);
     
     // 设置焦点
     SetFocus(GetDlgItem(hDlg, IDB_BROWSE));
     return FALSE;
 }
 
-void Cls_OnSysCommand0(HWND hwnd, UINT cmd, int x, int y)
+
+static void Cls_OnSysCommand0(HWND hwnd, UINT cmd, int x, int y)
 {
     if (cmd == SC_CLOSE)
     {
@@ -237,6 +242,7 @@ void Cls_OnSysCommand0(HWND hwnd, UINT cmd, int x, int y)
         EndDialog(hwnd, 0);
     }
 }
+
 
 BOOL CALLBACK MainDlgProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam)
 {
@@ -261,12 +267,12 @@ BOOL CALLBACK MainDlgProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam)
 				switch (((LPNMLVKEYDOWN)lParam)->wVKey)
 				{
 				case VK_CONTROL:			// 无法接收VK_RETURN
-					iClickItem = ListView_GetSelectionMark(hList);
+					iClickItem = ListView_GetSelectionMark(g_hList);
 					SendMessage(hDlg, WM_COMMAND, IDM_OPENFILE, 0);
 					return TRUE;
 
 				case VK_DELETE:
-					iClickItem = ListView_GetSelectionMark(hList);
+					iClickItem = ListView_GetSelectionMark(g_hList);
 					SendMessage(hDlg, WM_COMMAND, IDM_DELETE, 0);
 					return TRUE;
 				}
@@ -278,7 +284,7 @@ BOOL CALLBACK MainDlgProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam)
 				ScreenToClient(hDlg, &lvh.pt);
 				lvh.pt.x -= cListViewPos[0];
 				lvh.pt.y -= cListViewPos[1];
-				iClickItem =  SendMessage(hList, LVM_SUBITEMHITTEST, 0, (LPARAM)&lvh);
+				iClickItem =  SendMessage(g_hList, LVM_SUBITEMHITTEST, 0, (LPARAM)&lvh);
 				if (((NMHDR*)lParam)->code == NM_DBLCLK)
 				{
 					SendMessage(hDlg, WM_COMMAND, IDM_OPENFILE, 0);
@@ -286,7 +292,7 @@ BOOL CALLBACK MainDlgProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam)
 				else
 				{
 					GetCursorPos(&lvh.pt);
-					TrackPopupMenu(hMenu, TPM_RIGHTBUTTON, lvh.pt.x, lvh.pt.y, 0, hDlg, NULL);
+					TrackPopupMenu(g_hMenu, TPM_RIGHTBUTTON, lvh.pt.x, lvh.pt.y, 0, hDlg, NULL);
 				}
 				return TRUE;
 			}
@@ -297,581 +303,6 @@ BOOL CALLBACK MainDlgProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam)
     }
 }
 
-
-static void EnableControls(HWND hDlg, int id, bool enable)
-{
-    switch (id)
-    {
-    case IDC_CHECK_NAME:
-        EnableWindow(GetDlgItem(hDlg, IDC_RADIO_FULLNAME), enable);
-        EnableWindow(GetDlgItem(hDlg, IDC_CHECK_NOSUFFIX), enable);
-        EnableWindow(GetDlgItem(hDlg, IDC_RADIO_PARTNAME), enable);
-        EnableWindow(GetDlgItem(hDlg, IDC_EDIT_NAMEBEG), enable);
-        EnableWindow(GetDlgItem(hDlg, IDC_EDIT_NAMEEND), enable);
-        EnableWindow(GetDlgItem(hDlg, IDC_RADIO_INCNAME), enable);
-        EnableWindow(GetDlgItem(hDlg, IDC_EDIT_NAMEINC), enable);
-        break;
-
-    case IDC_CHECK_SIZE:
-        EnableWindow(GetDlgItem(hDlg, IDC_RADIO_SIZEEQUAL), enable);
-        break;
-
-    case IDC_CHECK_DATE:
-        EnableWindow(GetDlgItem(hDlg, IDC_CHECK_YEAR), enable);
-        EnableWindow(GetDlgItem(hDlg, IDC_CHECK_MONTH), enable);
-        EnableWindow(GetDlgItem(hDlg, IDC_CHECK_DAY), enable);
-        EnableWindow(GetDlgItem(hDlg, IDC_CHECK_WEEK), enable);
-        break;
-
-    case IDC_CHECK_DATA:
-        EnableWindow(GetDlgItem(hDlg, IDC_RADIO_DATAEQUAL), enable);
-        EnableWindow(GetDlgItem(hDlg, IDC_RADIO_PARTDATAEQUAL), enable);
-        EnableWindow(GetDlgItem(hDlg, IDC_COMBO_DATAFRONT), enable);
-        EnableWindow(GetDlgItem(hDlg, IDC_EDIT_DATABEG), enable);
-        EnableWindow(GetDlgItem(hDlg, IDC_EDIT_DATAEND), enable);
-        EnableWindow(GetDlgItem(hDlg, IDC_COMBO_DATAUNIT), enable);
-        break;
-
-    case IDC_CHECK_SIZERANGE:
-        EnableWindow(GetDlgItem(hDlg, IDC_RADIO_SIZERANGE_INC), enable);
-        EnableWindow(GetDlgItem(hDlg, IDC_RADIO_SIZERANGE_IGN), enable);
-        EnableWindow(GetDlgItem(hDlg, IDC_EDIT_SIZEBEG), enable);
-        EnableWindow(GetDlgItem(hDlg, IDC_EDIT_SIZEEND), enable);
-        EnableWindow(GetDlgItem(hDlg, IDC_COMBO_SIZEUNIT), enable);
-        break;
-
-    case IDC_CHECK_ATTRIB:
-        EnableWindow(GetDlgItem(hDlg, IDC_RADIO_ATTRIB_INC), enable);
-        EnableWindow(GetDlgItem(hDlg, IDC_RADIO_ATTRIB_IGN), enable);
-        EnableWindow(GetDlgItem(hDlg, IDC_CHECK_ATTR_A), enable);
-        EnableWindow(GetDlgItem(hDlg, IDC_CHECK_ATTR_R), enable);
-        EnableWindow(GetDlgItem(hDlg, IDC_CHECK_ATTR_S), enable);
-        EnableWindow(GetDlgItem(hDlg, IDC_CHECK_ATTR_H), enable);
-        EnableWindow(GetDlgItem(hDlg, IDC_CHECK_ATTR_N), enable);
-        break;
-
-    default:
-        assert(0);
-        break;
-    }
-}
-
-
-void SplitString(const wchar_t *src,
-                 std::vector<std::wstring>& v,
-                 const wchar_t *key,
-                 const wchar_t  begin,
-                 const wchar_t  end,
-                 bool ignoreSpace)
-{
-    if (!src || src[0] == 0) return;
-    
-    int len = wcslen(src);
-    wchar_t *copy = new wchar_t[len+1];
-    if (!copy) return;
-
-
-    int posl = 0, posr = -1;
-    if (ignoreSpace)
-    {
-        int j = 0;
-        for (int i=0; i<len; ++i)
-            if (src[i] != L' ')
-                copy[j++] = src[i];
-        
-        copy[j] = 0;
-        len = j;
-    }
-    
-    posl = 0, posr = len-1;
-    for (int i=0; i<len; ++i)
-    {
-        if (copy[i] == begin)
-            posl = i + 1;
-        else if (copy[i] == end)
-        {
-            posr = i - 1;
-            copy[i] = 0;
-            break;
-        }
-    }
-    if (posr < posl)
-        return;
-
-    int len1 = wcslen(key), j = posl;
-    for (int i=posl; i<posr;)
-    {
-        if (!wcsncmp(&copy[i], key, len1))
-        {
-            wchar_t bak = copy[i];
-            copy[i] = 0;
-            v.push_back(std::wstring(&copy[j]));
-            i = j = i + len1;
-        }
-        else
-            ++i;
-    }
-
-    if (j < posr)
-        v.push_back(std::wstring(&copy[j]));
-
-    delete[] copy;
-}
-
-void LoadFilterConfigToDialog(HWND hDlg, FileGroup& fg)
-{
-    TCHAR Buffer[MAX_PATH];
-
-    //------------------------------------------- 文件名
-
-    if (fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileName]
-        == FileGroup::FILTER::Type_Off)
-        EnableControls(hDlg, IDC_CHECK_NAME, false);
-    else
-    {
-        CheckDlgButton(hDlg, IDC_CHECK_NAME, 1);
-        EnableControls(hDlg, IDC_CHECK_NAME, true);
-
-        switch (fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileName])
-        {
-        case FileGroup::FILTER::Type_Whole:
-            for (int i=IDC_RADIO_FULLNAME; i<=IDC_RADIO_PARTNAME; ++i)
-                CheckDlgButton(hDlg, i, i==IDC_RADIO_FULLNAME);
-            
-            CheckDlgButton(hDlg, IDC_CHECK_NOSUFFIX,
-                fg.m_Filter.FileNameWithoutSuffix);
-
-            break;
-
-        case FileGroup::FILTER::Type_RangeMatch:
-            for (int i=IDC_RADIO_FULLNAME; i<=IDC_RADIO_PARTNAME; ++i)
-                CheckDlgButton(hDlg, i, i==IDC_RADIO_PARTNAME);
-
-            StringCchPrintf(Buffer, MAX_PATH, L"%d",
-                fg.m_Filter.FileNameRange.LowerBound);
-            SetDlgItemText(hDlg, IDC_EDIT_NAMEBEG, Buffer);
-
-            StringCchPrintf(Buffer, MAX_PATH, L"%d",
-                fg.m_Filter.FileNameRange.UpperBound);
-            SetDlgItemText(hDlg, IDC_EDIT_NAMEEND, Buffer);
-
-            break;
-
-        case FileGroup::FILTER::Type_Include:
-            for (int i=IDC_RADIO_FULLNAME; i<=IDC_RADIO_PARTNAME; ++i)
-                CheckDlgButton(hDlg, i, i==IDC_RADIO_INCNAME);
-
-            SetDlgItemText(hDlg, IDC_EDIT_NAMEINC, fg.m_Filter.KeyWordOfFileName.c_str());
-
-            break;
-
-        default:
-            assert(0);
-            break;
-        }
-    }
-
-    //------------------------------------------- 文件大小
-
-    if (fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileSize]
-        == FileGroup::FILTER::Type_Off)
-        EnableControls(hDlg, IDC_CHECK_SIZE, false);
-    else
-    {
-        CheckDlgButton(hDlg, IDC_CHECK_SIZE, 1);
-        EnableControls(hDlg, IDC_CHECK_SIZE, true);
-        CheckDlgButton(hDlg, IDC_RADIO_SIZEEQUAL, true);
-    }
-
-    //------------------------------------------- 文件修改日期
-
-    int status;
-    if ((status = fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileDate])
-        == FileGroup::FILTER::Type_Off)
-        EnableControls(hDlg, IDC_CHECK_DATE, false);
-    else
-    {
-        CheckDlgButton(hDlg, IDC_CHECK_DATE, 1);
-        EnableControls(hDlg, IDC_CHECK_DATE, true);
-
-        CheckDlgButton(hDlg, IDC_CHECK_YEAR,  fg.m_Filter.SelectedDate & FileGroup::FILTER::Time_Year);
-        CheckDlgButton(hDlg, IDC_CHECK_MONTH, fg.m_Filter.SelectedDate & FileGroup::FILTER::Time_Month);
-        CheckDlgButton(hDlg, IDC_CHECK_DAY,   fg.m_Filter.SelectedDate & FileGroup::FILTER::Time_Day);
-        CheckDlgButton(hDlg, IDC_CHECK_WEEK,  fg.m_Filter.SelectedDate & FileGroup::FILTER::Time_Week);
-    }
-
-    //------------------------------------------- 文件内容
-
-    if ((status = fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileHash])
-        == FileGroup::FILTER::Type_Off)
-        EnableControls(hDlg, IDC_CHECK_DATA, false);
-    else
-    {
-        CheckDlgButton(hDlg, IDC_CHECK_DATA, 1);
-        EnableControls(hDlg, IDC_CHECK_DATA, true);
-
-        if (status == FileGroup::FILTER::Type_Whole)
-            for (int i=IDC_RADIO_DATAEQUAL; i<=IDC_RADIO_PARTDATAEQUAL; ++i)
-                CheckDlgButton(hDlg, i, i==IDC_RADIO_DATAEQUAL);
-
-        else
-        {
-            for (int i=IDC_RADIO_DATAEQUAL; i<=IDC_RADIO_PARTDATAEQUAL; ++i)
-                CheckDlgButton(hDlg, i, i==IDC_RADIO_PARTDATAEQUAL);
-
-            StringCchPrintf(Buffer, MAX_PATH, L"%d",
-                fg.m_Filter.FileDataRange.LowerBound);
-            SetDlgItemText(hDlg, IDC_EDIT_DATABEG, Buffer);
-
-            StringCchPrintf(Buffer, MAX_PATH, L"%d",
-                fg.m_Filter.FileDataRange.UpperBound);
-            SetDlgItemText(hDlg, IDC_EDIT_DATAEND, Buffer);
-
-            
-            SendDlgItemMessage(hDlg, IDC_COMBO_DATAFRONT, CB_SETCURSEL,
-                fg.m_Filter.FileDataRange.Inverted, 0);
-        }
-    }
-
-    //------------------------------------------- 包含的扩展名
-
-    if ((status = fg.m_Filter.Switch[FileGroup::FILTER::Search_IncludeSuffix])
-        == FileGroup::FILTER::Type_Off) 
-        SetDlgItemText(hDlg, IDC_COMBO_TYPEINC, L"");
-    
-    else
-    {
-        std::vector<std::wstring>::iterator it = fg.m_Filter.ContainSuffix.begin();
-        if (it != fg.m_Filter.ContainSuffix.end())
-        {
-            std::wstring str = std::wstring((*it++));
-            for (; it != fg.m_Filter.ContainSuffix.end(); ++it)
-                (str += L" | ") += (*it);
-            SetDlgItemText(hDlg, IDC_COMBO_TYPEINC, str.c_str());
-        }
-    }
-
-    //------------------------------------------- 忽视的扩展名
-
-    if ((status = fg.m_Filter.Switch[FileGroup::FILTER::Search_IgnoreSuffix])
-        == FileGroup::FILTER::Type_Off) 
-        SetDlgItemText(hDlg, IDC_COMBO_TYPEIGN, L"");
-    
-    else
-    {
-        std::vector<std::wstring>::iterator it = fg.m_Filter.IgnoreSuffix.begin();
-        if (it != fg.m_Filter.IgnoreSuffix.end())
-        {
-            std::wstring str = std::wstring((*it++));
-            for (; it != fg.m_Filter.IgnoreSuffix.end(); ++it)
-                (str += L" | ") += (*it);
-            SetDlgItemText(hDlg, IDC_COMBO_TYPEIGN, str.c_str());
-        }
-    }
-
-    //------------------------------------------- 查找的文件大小范围
-
-    if ((status = fg.m_Filter.Switch[FileGroup::FILTER::Search_FileSize])
-        == FileGroup::FILTER::Type_Off)
-        EnableControls(hDlg, IDC_CHECK_SIZERANGE, false);
-    else
-    {
-        CheckDlgButton(hDlg, IDC_CHECK_SIZERANGE, 1);
-        EnableControls(hDlg, IDC_CHECK_SIZERANGE, true);
-
-        CheckDlgButton(hDlg, IDC_RADIO_SIZERANGE_INC,
-            status == FileGroup::FILTER::Type_Include);
-        CheckDlgButton(hDlg, IDC_RADIO_SIZERANGE_IGN,
-            status == FileGroup::FILTER::Type_Ignore);
-
-        StringCchPrintf(Buffer, MAX_PATH, L"%d",
-            fg.m_Filter.FileSizeRange.LowerBound);
-        SetDlgItemText(hDlg, IDC_EDIT_SIZEBEG, Buffer);
-
-        StringCchPrintf(Buffer, MAX_PATH, L"%d",
-            fg.m_Filter.FileSizeRange.UpperBound);
-        SetDlgItemText(hDlg, IDC_EDIT_SIZEEND, Buffer);
-
-        // 单位
-    }
-
-    //------------------------------------------- 查找的文件属性
-
-    if ((status = fg.m_Filter.Switch[FileGroup::FILTER::Search_FileAttribute])
-        == FileGroup::FILTER::Type_Off)
-        EnableControls(hDlg, IDC_CHECK_ATTRIB, false);
-    else
-    {
-        CheckDlgButton(hDlg, IDC_CHECK_ATTRIB, 1);
-        EnableControls(hDlg, IDC_CHECK_ATTRIB, true);
-
-        CheckDlgButton(hDlg, IDC_RADIO_ATTRIB_INC,
-            status == FileGroup::FILTER::Type_Include);
-        CheckDlgButton(hDlg, IDC_RADIO_ATTRIB_IGN,
-            status == FileGroup::FILTER::Type_Ignore);
-
-        CheckDlgButton(hDlg, IDC_CHECK_ATTR_A, fg.m_Filter.SelectedAttributes & FileGroup::FILTER::Attrib_Archive);
-        CheckDlgButton(hDlg, IDC_CHECK_ATTR_R, fg.m_Filter.SelectedAttributes & FileGroup::FILTER::Attrib_ReadOnly);
-        CheckDlgButton(hDlg, IDC_CHECK_ATTR_S, fg.m_Filter.SelectedAttributes & FileGroup::FILTER::Attrib_System);
-        CheckDlgButton(hDlg, IDC_CHECK_ATTR_H, fg.m_Filter.SelectedAttributes & FileGroup::FILTER::Attrib_Hide);
-        CheckDlgButton(hDlg, IDC_CHECK_ATTR_N, fg.m_Filter.SelectedAttributes & FileGroup::FILTER::Attrib_Normal);
-    }
-
-    //------------------------------------------- 查找的目录
-
-    std::map<std::wstring, int>::iterator it;
-    std::wstring str;
-    for (it=fg.m_Filter.SearchDirectory.begin(); it!=fg.m_Filter.SearchDirectory.end(); ++it)
-    {
-        str.clear();
-        str += it->first;
-        SendDlgItemMessage(hDlg, IDC_LIST_DIR, LB_ADDSTRING, 0, (LPARAM)str.c_str());
-    }
-
-}
-
-
-
-void UpdateFilterConfig(HWND hDlg, FileGroup& fg)
-{
-    TCHAR Buffer[MAX_PATH];
-
-    //------------------------------------------- 文件名
-
-    if (!IsDlgButtonChecked(hDlg, IDC_CHECK_NAME))
-        fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileName] =
-            FileGroup::FILTER::Type_Off;
-    else
-    {
-        if (IsDlgButtonChecked(hDlg, IDC_RADIO_FULLNAME))
-        {
-            fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileName] =
-                FileGroup::FILTER::Type_Whole;
-            fg.m_Filter.FileNameWithoutSuffix =
-                IsDlgButtonChecked(hDlg, IDC_CHECK_NOSUFFIX);
-        }
-        else if (IsDlgButtonChecked(hDlg, IDC_RADIO_PARTNAME))
-        {
-            fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileName] =
-                FileGroup::FILTER::Type_RangeMatch;
-            GetDlgItemText(hDlg, IDC_EDIT_NAMEBEG, Buffer, MAX_PATH);
-            fg.m_Filter.FileNameRange.LowerBound = _wtoi(Buffer);
-            GetDlgItemText(hDlg, IDC_EDIT_NAMEEND, Buffer, MAX_PATH);
-            fg.m_Filter.FileNameRange.UpperBound = _wtoi(Buffer);
-        }
-        else if (IsDlgButtonChecked(hDlg, IDC_RADIO_INCNAME))
-        {
-            fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileName] =
-                FileGroup::FILTER::Type_Include;
-            GetDlgItemText(hDlg, IDC_EDIT_NAMEINC, Buffer, MAX_PATH);
-            fg.m_Filter.KeyWordOfFileName = Buffer;
-        }
-    }
-
-    //------------------------------------------- 文件大小
-
-    if (!IsDlgButtonChecked(hDlg, IDC_CHECK_SIZE))
-        fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileSize] =
-            FileGroup::FILTER::Type_Off;
-    else
-    {
-        fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileSize] =
-            FileGroup::FILTER::Type_Whole;
-    }
-
-    //------------------------------------------- 修改日期
-
-    if (!IsDlgButtonChecked(hDlg, IDC_CHECK_DATE))
-        fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileDate] =
-            FileGroup::FILTER::Type_Off;
-    else
-    {
-        fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileDate] =
-            FileGroup::FILTER::Type_On;
-        
-        fg.m_Filter.SelectedDate = 0;
-        if (IsDlgButtonChecked(hDlg, IDC_CHECK_YEAR))
-            fg.m_Filter.SelectedDate |= FileGroup::FILTER::Time_Year;
-        if (IsDlgButtonChecked(hDlg, IDC_CHECK_MONTH))
-            fg.m_Filter.SelectedDate |= FileGroup::FILTER::Time_Month;
-        if (IsDlgButtonChecked(hDlg, IDC_CHECK_DAY))
-            fg.m_Filter.SelectedDate |= FileGroup::FILTER::Time_Day;
-        if (IsDlgButtonChecked(hDlg, IDC_CHECK_WEEK))
-            fg.m_Filter.SelectedDate |= FileGroup::FILTER::Time_Week;
-    }
-
-    //------------------------------------------- 文件内容
-
-    if (!IsDlgButtonChecked(hDlg, IDC_CHECK_DATA))
-        fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileHash] =
-            FileGroup::FILTER::Type_Off;
-    else
-    {
-        if (IsDlgButtonChecked(hDlg, IDC_RADIO_DATAEQUAL))
-        {
-            fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileHash] =
-                FileGroup::FILTER::Type_Whole;
-        }
-        else
-        {
-            fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileHash] =
-                FileGroup::FILTER::Type_RangeMatch;
-
-            GetDlgItemText(hDlg, IDC_EDIT_DATABEG, Buffer, MAX_PATH);
-            fg.m_Filter.FileDataRange.LowerBound = _wtoi(Buffer);
-            GetDlgItemText(hDlg, IDC_EDIT_DATAEND, Buffer, MAX_PATH);
-            fg.m_Filter.FileDataRange.UpperBound = _wtoi(Buffer);
-
-            int idx = SendDlgItemMessage(hDlg, IDC_COMBO_DATAFRONT, CB_GETCURSEL, 0, 0);
-            fg.m_Filter.FileDataRange.Inverted = (bool)idx;
-        }
-    }
-
-    //------------------------------------------- 包含类型
-
-    fg.m_Filter.ContainSuffix.clear();
-    fg.m_Filter.Switch[FileGroup::FILTER::Search_IncludeSuffix] =
-                FileGroup::FILTER::Type_Off;
-
-    int idx;
-    if ((idx = SendDlgItemMessage(hDlg, IDC_COMBO_TYPEINC, CB_GETCURSEL, 0, 0)) != CB_ERR)
-    {
-        LoadString(g_hInstance, idx+IDS_STRING103, Buffer, MAX_PATH);
-        SplitString(Buffer, fg.m_Filter.ContainSuffix, L"|", L'(', L')', true);
-        fg.m_Filter.Switch[FileGroup::FILTER::Search_IncludeSuffix] =
-                FileGroup::FILTER::Type_On;
-    }
-    else if (idx == CB_ERR)
-    {
-        GetDlgItemText(hDlg, IDC_COMBO_TYPEINC, Buffer, MAX_PATH);
-        SplitString(Buffer, fg.m_Filter.ContainSuffix, L"|", 0, 0, true);
-        if (fg.m_Filter.ContainSuffix.size() > 0)
-            fg.m_Filter.Switch[FileGroup::FILTER::Search_IncludeSuffix] =
-                FileGroup::FILTER::Type_On;
-    }
-    
-
-    //------------------------------------------- 忽略类型
-
-    fg.m_Filter.IgnoreSuffix.clear();
-    fg.m_Filter.Switch[FileGroup::FILTER::Search_IgnoreSuffix] = FileGroup::FILTER::Type_Off;
-
-    if ((idx = SendDlgItemMessage(hDlg, IDC_COMBO_TYPEIGN, CB_GETCURSEL, 0, 0)) != CB_ERR)
-    {
-        LoadString(g_hInstance, idx+IDS_STRING103, Buffer, MAX_PATH);
-        SplitString(Buffer, fg.m_Filter.IgnoreSuffix, L"|", L'(', L')', true);
-        fg.m_Filter.Switch[FileGroup::FILTER::Search_IgnoreSuffix] = FileGroup::FILTER::Type_On;
-    }
-    else if (idx == CB_ERR)
-    {
-        GetDlgItemText(hDlg, IDC_COMBO_TYPEIGN, Buffer, MAX_PATH);
-        SplitString(Buffer, fg.m_Filter.IgnoreSuffix, L"|", 0, 0, true);
-        if (fg.m_Filter.IgnoreSuffix.size() > 0)
-            fg.m_Filter.Switch[FileGroup::FILTER::Search_IgnoreSuffix] = FileGroup::FILTER::Type_On;
-    }
-
-
-    //------------------------------------------- 文件大小范围
-
-    if (!IsDlgButtonChecked(hDlg, IDC_CHECK_SIZERANGE))
-        fg.m_Filter.Switch[FileGroup::FILTER::Search_FileSize] =
-            FileGroup::FILTER::Type_Off;
-    else
-    {
-        fg.m_Filter.Switch[FileGroup::FILTER::Search_FileSize] =
-            (IsDlgButtonChecked(hDlg, IDC_RADIO_SIZERANGE_INC) ?
-                FileGroup::FILTER::Type_Include :
-                FileGroup::FILTER::Type_Ignore);
-        
-        GetDlgItemText(hDlg, IDC_EDIT_SIZEBEG, Buffer, MAX_PATH);
-        fg.m_Filter.FileSizeRange.LowerBound = _wtoi(Buffer);
-        GetDlgItemText(hDlg, IDC_EDIT_SIZEEND, Buffer, MAX_PATH);
-        fg.m_Filter.FileSizeRange.UpperBound = _wtoi(Buffer);
-    }
-
-    //------------------------------------------- 文件属性
-
-    if (!IsDlgButtonChecked(hDlg, IDC_CHECK_ATTRIB))
-        fg.m_Filter.Switch[FileGroup::FILTER::Search_FileAttribute] =
-            FileGroup::FILTER::Type_Off;
-    else
-    {
-        fg.m_Filter.Switch[FileGroup::FILTER::Search_FileAttribute] =
-            (IsDlgButtonChecked(hDlg, IDC_RADIO_ATTRIB_INC) ?
-                FileGroup::FILTER::Type_Include :
-                FileGroup::FILTER::Type_Ignore);
-        
-        fg.m_Filter.SelectedAttributes = 0;
-
-        fg.m_Filter.SelectedAttributes |= IsDlgButtonChecked(hDlg, IDC_CHECK_ATTR_A) ?
-            FileGroup::FILTER::Attrib_Archive : 0;
-        fg.m_Filter.SelectedAttributes |= IsDlgButtonChecked(hDlg, IDC_CHECK_ATTR_R) ?
-            FileGroup::FILTER::Attrib_ReadOnly : 0;
-        fg.m_Filter.SelectedAttributes |= IsDlgButtonChecked(hDlg, IDC_CHECK_ATTR_S) ?
-            FileGroup::FILTER::Attrib_System : 0;
-        fg.m_Filter.SelectedAttributes |= IsDlgButtonChecked(hDlg, IDC_CHECK_ATTR_H) ?
-            FileGroup::FILTER::Attrib_Hide : 0;
-        fg.m_Filter.SelectedAttributes |= IsDlgButtonChecked(hDlg, IDC_CHECK_ATTR_N) ?
-            FileGroup::FILTER::Attrib_Normal : 0;
-    }
-
-    //------------------------------------------- 搜索路径
-
-    fg.m_Filter.SearchDirectory.clear();
-
-    idx = SendDlgItemMessage(hDlg, IDC_LIST_DIR, LB_GETCOUNT, 0, 0);
-    if (idx != LB_ERR)
-    {
-        for (int i=0; i<idx; ++i)
-        {
-            //int times = SendDlgItemMessage(hDlg, IDC_COMBO_TYPEINC, CB_GETCURSEL, 0, 0);
-            //if (times == CB_ERR) times = 0;
-            //switch (times)
-            //{
-            //case 0:  times = -1; break;     // 所有
-            //case 1:  times =  0; break;     // 当前
-            //default: times--;    break;     // X层
-            //}
-            SendDlgItemMessage(hDlg, IDC_LIST_DIR, LB_GETTEXT, i, (LPARAM)Buffer);
-            int len = wcslen(Buffer);
-            if (Buffer[len-1] == L'\\')     // 选择分区根目录时最后为反斜杠
-                Buffer[len-1] = L'\0';
-            fg.m_Filter.SearchDirectory.insert(
-                std::make_pair(std::wstring(Buffer), -1/*times*/));
-        }
-    }
-}
-
-bool IsSubString(const wchar_t* child, const wchar_t* parent)
-{
-    if (!child || !parent)
-        return false;
-
-    bool ret;
-
-    while (*child && (ret = *child == *parent))
-        ++child, ++parent;
-
-    return ret;
-}
-
-bool HashParentDirectoryInList(HWND hList, const wchar_t *dir)
-{
-    if (!dir)
-        return true;
-
-    wchar_t Buf[MAX_PATH];
-
-    int cnt = SendMessage(hList, LB_GETCOUNT, 0, 0);
-    for (int i=0; i<cnt; ++i)
-    {
-        SendMessage(hList, LB_GETTEXT, i, (LPARAM)Buf);
-        if (IsSubString(Buf, dir))
-            return true;
-    }
-
-    return false;
-}
 
 static bool Cls_OnCommand_filter(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
 {
@@ -891,7 +322,7 @@ static bool Cls_OnCommand_filter(HWND hDlg, int id, HWND hwndCtl, UINT codeNotif
         if (Buffer[0] &&
             LB_ERR == SendDlgItemMessage(hDlg, IDC_LIST_DIR, LB_FINDSTRINGEXACT, -1, (LPARAM)Buffer))
         {
-            if (!HashParentDirectoryInList(GetDlgItem(hDlg, IDC_LIST_DIR), Buffer))
+            if (!HasParentDirectoryInList(GetDlgItem(hDlg, IDC_LIST_DIR), Buffer))
             {
                 int ans = 0;
                 if (LB_ERR != SendDlgItemMessage(hDlg, IDC_LIST_DIR, LB_FINDSTRING, -1, (LPARAM)Buffer))
@@ -948,6 +379,7 @@ static bool Cls_OnCommand_filter(HWND hDlg, int id, HWND hwndCtl, UINT codeNotif
 
     return FALSE;
 }
+
 
 static bool Cls_OnInitDialog_filter(HWND hDlg, HWND hwndFocus, LPARAM lParam)
 {
@@ -1011,11 +443,13 @@ static bool Cls_OnInitDialog_filter(HWND hDlg, HWND hwndFocus, LPARAM lParam)
     return true;
 }
 
-void Cls_OnSysCommand(HWND hwnd, UINT cmd, int x, int y)
+
+static void Cls_OnSysCommand(HWND hwnd, UINT cmd, int x, int y)
 {
     if (cmd == SC_CLOSE)
         EndDialog(hwnd, 0);
 }
+
 
 BOOL CALLBACK FilterDialogProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -1027,21 +461,17 @@ BOOL CALLBACK FilterDialogProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam
         HANDLE_MSG(hDlg, WM_INITDIALOG,  Cls_OnInitDialog_filter);
     }
 
-
     return FALSE;
 }
 
 
 DWORD WINAPI Thread(PVOID pvoid)
 {
-
     while (1)
     {
         WaitForSingleObject(g_ThreadSignal, INFINITE);
 
         // if (...) ExitThread
-
-
 
         g_FileGroup.StartSearchFiles();
     }
@@ -1062,23 +492,23 @@ DWORD WINAPI ThreadHashOnly(PVOID pvoid)
     //wchar_t Result[48];
 	//SHA_1   Hash;
 
-	//EnableWindow(GetDlgItem(GetParent(hList), IDB_BROWSE), FALSE);
-	//EnableWindow(GetDlgItem(GetParent(hList), IDB_SEARCH), FALSE);
-	//EnableWindow(GetDlgItem(GetParent(hList), IDB_PAUSE),  FALSE);
+	//EnableWindow(GetDlgItem(GetParent(g_hList), IDB_BROWSE), FALSE);
+	//EnableWindow(GetDlgItem(GetParent(g_hList), IDB_SEARCH), FALSE);
+	//EnableWindow(GetDlgItem(GetParent(g_hList), IDB_PAUSE),  FALSE);
 	//
-	//for (i=ListView_GetItemCount(hList)-1; i>=0; --i)
-	//	if (ListView_GetCheckState(hList, i) == TRUE)			// 获取选中的行并哈希
+	//for (i=ListView_GetItemCount(g_hList)-1; i>=0; --i)
+	//	if (ListView_GetCheckState(g_hList, i) == TRUE)			// 获取选中的行并哈希
 	//	{
-	//		ListView_GetItemText(hList, i, 1, szBuffer, MAX_PATH1);
+	//		ListView_GetItemText(g_hList, i, 1, szBuffer, MAX_PATH1);
 	//		StringCbCat(szBuffer, MAX_PATH1, TEXT("\\"));
-	//		ListView_GetItemText(hList, i, 0, szBuffer1, MAX_PATH1);
+	//		ListView_GetItemText(g_hList, i, 0, szBuffer1, MAX_PATH1);
 	//		StringCbCat(szBuffer, MAX_PATH1, szBuffer1);
-	//		ListView_SetItemText(hList, i, 5, TEXT("哈希中..."));
+	//		ListView_SetItemText(g_hList, i, 5, TEXT("哈希中..."));
 	//		Hash.CalculateSha1(szBuffer, Result, MAX_PATH, !(*pf));
-	//		ListView_SetItemText(hList, i, 5, Result);
+	//		ListView_SetItemText(g_hList, i, 5, Result);
 	//	}
-	//EnableWindow(GetDlgItem(GetParent(hList), IDB_BROWSE), TRUE);
-	//EnableWindow(GetDlgItem(GetParent(hList), IDB_SEARCH), TRUE);
-	//EnableWindow(GetDlgItem(GetParent(hList), IDB_PAUSE),  TRUE);
+	//EnableWindow(GetDlgItem(GetParent(g_hList), IDB_BROWSE), TRUE);
+	//EnableWindow(GetDlgItem(GetParent(g_hList), IDB_SEARCH), TRUE);
+	//EnableWindow(GetDlgItem(GetParent(g_hList), IDB_PAUSE),  TRUE);
 	return 0;
 }

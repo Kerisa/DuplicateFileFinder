@@ -41,6 +41,9 @@
     <ClInclude Include="FileGroup.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="functions.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="main.rc">

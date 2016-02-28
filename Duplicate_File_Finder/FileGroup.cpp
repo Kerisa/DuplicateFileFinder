@@ -1,6 +1,11 @@
 
 #include "FileGroup.h"
 
+
+extern HWND g_hStatus;
+extern void UpdateStatusBar(int part, const wchar_t *text);
+
+
 FileGroup::FileGroup()
 {
     InitFilter();
@@ -22,13 +27,29 @@ void FileGroup::InitFilter()
     m_Filter.ContainSuffix.clear();
     m_Filter.SearchDirectory.clear();
 
-    //*************************************************************************
+    // TEST *************************************************************************
 
     m_Filter.Switch[FILTER::Compare_FileSize] = FILTER::Type_Whole;
     m_Filter.Switch[FILTER::Compare_FileHash] = FILTER::Type_Whole;
 
     m_StoreType = StoreType_size;
 }
+
+
+inline bool FileGroup::GetFileSuffix(const std::wstring & name, std::wstring& result) const
+{
+    bool ret = false;
+
+    std::wstring::size_type pos = name.rfind(L'.');
+    if (pos != std::wstring::npos)
+    {
+        result = std::wstring(name, pos+1);
+        ret = true;
+    }
+
+    return ret;
+}
+
 
 int FileGroup::StoreMatchedFile(const std::wstring& path, const PWIN32_FIND_DATA pwfd)
 {
@@ -40,14 +61,15 @@ int FileGroup::StoreMatchedFile(const std::wstring& path, const PWIN32_FIND_DATA
         idx = size;
     
     if (m_Filter.Switch[FILTER::Compare_FileDate])
-        idx += MakeSimpleTime(&st);
+        idx += pMakeSimpleTime(&st);
     
     std::wstring name(pwfd->cFileName);
     FileInfo fi;
     fi.Name = std::wstring(name);
     fi.Path = std::wstring(path);
     fi.Size = size;
-    fi.st   = st;
+    fi.CreationTime   = pwfd->ftCreationTime;
+    fi.LastWriteTime  = pwfd->ftLastWriteTime;
 
 
     switch (m_StoreType)
@@ -264,7 +286,7 @@ int FileGroup::StoreMatchedFile(const std::wstring& path, const PWIN32_FIND_DATA
 }
 
 
-ULONG64 FileGroup::MakeSimpleTime(PSYSTEMTIME pst)
+ULONG64 FileGroup::pMakeSimpleTime(PSYSTEMTIME pst)
 {
     // 31 29 28 24 23 20 19       4 3   0
     // +----+-----+-----+----------+-----+
@@ -428,6 +450,11 @@ int FileGroup::PerformHash(const std::wstring& name, std::wstring& result, ULONG
 {
     SHA_1 Hash;
     int   ret;
+
+    // 更新状态栏
+    std::wstring status(L"正在哈希: ");
+    status += name;
+    UpdateStatusBar(0, status.c_str());
 
     do 
     {
@@ -732,45 +759,7 @@ bool FileGroup::IsFileMatched(const std::wstring & path, const PWIN32_FIND_DATA 
 
 
 int FileGroup::FindFiles(const std::wstring& dirPath, int depth)
-{
-    if (m_Filter.Switch[m_Filter.Compare_FileHash] != FileGroup::FILTER::Type_Off)     // 哈希
-        m_StoreType = StoreType_hash;
-    
-    if (m_Filter.Switch[m_Filter.Compare_FileSize])
-    {
-        if (m_Filter.Switch[m_Filter.Compare_FileDate])     // 大小 + 日期
-        {
-            if (m_Filter.Switch[m_Filter.Compare_FileName])
-                m_StoreType = StoreType_size_date_name;
-            else
-                m_StoreType = StoreType_size_date;
-        }
-        else if (m_Filter.Switch[m_Filter.Compare_FileName])    // 大小 + 文件名
-        {
-            m_StoreType = StoreType_size_name;
-        }
-        else    // 大小
-        {
-            m_StoreType = StoreType_size;
-        }
-    }
-    else if (m_Filter.Switch[m_Filter.Compare_FileDate])
-    {
-        if (m_Filter.Switch[m_Filter.Compare_FileName])
-            m_StoreType = StoreType_date_name;
-        else
-            m_StoreType = StoreType_date;
-
-    }
-    else if (m_Filter.Switch[m_Filter.Compare_FileName])
-    {
-        m_StoreType = StoreType_name;
-    }
-    else
-    {
-        m_StoreType = StoreType_All;
-    }
-    
+{    
     return pFindFiles(dirPath, depth);
 }
 
@@ -781,6 +770,11 @@ int FileGroup::pFindFiles(const std::wstring& dirPath, int depth)
     std::wstring path, search;
 
 	path = dirPath + L"\\*.*";
+
+    // 更新状态栏
+    std::wstring status(L"正在查找: ");
+    status += dirPath;
+    UpdateStatusBar(0, status.c_str());
 
     hFind = FindFirstFile(path.c_str(), &wfd);
 	if (hFind != INVALID_HANDLE_VALUE)
@@ -810,6 +804,7 @@ int FileGroup::pFindFiles(const std::wstring& dirPath, int depth)
     return 0;
 }
 
+
 int FileGroup::StartSearchFiles()
 {
     m_List1S.clear();
@@ -818,18 +813,75 @@ int FileGroup::StartSearchFiles()
     m_List0.clear();
     m_List1H.clear();
 
+    // 确定存储类型
+    if (m_Filter.Switch[m_Filter.Compare_FileHash] != FILTER::Type_Off)     // 哈希
+        m_StoreType = StoreType_hash;
+    
+    if (m_Filter.Switch[m_Filter.Compare_FileSize] != FILTER::Type_Off)
+    {
+        if (m_Filter.Switch[m_Filter.Compare_FileDate] != FILTER::Type_Off)     // 大小 + 日期
+        {
+            if (m_Filter.Switch[m_Filter.Compare_FileName] != FILTER::Type_Off)
+                m_StoreType = StoreType_size_date_name;
+            else
+                m_StoreType = StoreType_size_date;
+        }
+        else if (m_Filter.Switch[m_Filter.Compare_FileName] != FILTER::Type_Off)    // 大小 + 文件名
+        {
+            m_StoreType = StoreType_size_name;
+        }
+        else    // 大小
+        {
+            m_StoreType = StoreType_size;
+        }
+    }
+    else if (m_Filter.Switch[m_Filter.Compare_FileDate] != FILTER::Type_Off)
+    {
+        if (m_Filter.Switch[m_Filter.Compare_FileName] != FILTER::Type_Off)
+            m_StoreType = StoreType_date_name;
+        else
+            m_StoreType = StoreType_date;
+
+    }
+    else if (m_Filter.Switch[m_Filter.Compare_FileName] != FILTER::Type_Off)
+    {
+        m_StoreType = StoreType_name;
+    }
+    else
+    {
+        m_StoreType = StoreType_All;
+    }
+
+    // 设置状态栏
+    UpdateStatusBar(0, L"查找文件...");
+
     std::map<std::wstring, int>::iterator it;
     for (it=m_Filter.SearchDirectory.begin(); it!=m_Filter.SearchDirectory.end(); ++it)
     {
         FindFiles(it->first, 100);
     }
 
-    if (m_Filter.Switch[FileGroup::FILTER::Compare_FileHash] != FileGroup::FILTER::Type_Off)
+    // 设置状态栏
+    UpdateStatusBar(0, L"查找完成");
+
+    if (m_Filter.Switch[FileGroup::FILTER::Compare_FileHash] != FILTER::Type_Off)
     {
         HashFiles();
     }
+    
+    // 设置状态栏
+    UpdateStatusBar(0, L"正在生成列表");
 
     ExportData();
 
+    // 设置状态栏
+    UpdateStatusBar(0, L"操作结束");
+
+    
+    m_List1S.clear();
+    m_List2SN.clear();
+    m_List1N.clear();
+    m_List0.clear();
+    m_List1H.clear();
     return 0;
 }
