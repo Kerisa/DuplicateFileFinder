@@ -77,7 +77,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="64x64.ico" />
-    <None Include="bitbug_64.ico" />
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="Duplicate_File_Finder.exe.manifest" />
