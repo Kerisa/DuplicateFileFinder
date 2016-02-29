@@ -20,6 +20,7 @@ HINSTANCE	g_hInstance;
 HANDLE      g_ThreadSignal, g_hThread;
 FileGroup   g_FileGroup;
 
+static int iClickItem;
 
 DWORD WINAPI    Thread          (PVOID pvoid);
 DWORD WINAPI    ThreadHashOnly  (PVOID pvoid);
@@ -54,8 +55,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPreInstance,
 	return 0;
 }
 
-
-static int iClickItem;
 
 static bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
 {
@@ -159,6 +158,8 @@ static bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
 
     case IDB_START:
         ListView_DeleteAllItems(g_hList);
+        ListView_RemoveAllGroups(g_hList);
+
         SetEvent(g_ThreadSignal);
         return TRUE;
 
@@ -205,29 +206,35 @@ static bool Cls_OnInitDialog(HWND hDlg, HWND hwndFocus, LPARAM lParam)
     SendMessage(hDlg, WM_SETICON, ICON_BIG,
 		    (LPARAM)LoadIcon((HINSTANCE)GetWindowLong(hDlg, GWL_HINSTANCE), MAKEINTRESOURCE(IDI_ICON64)));
 
+
     // 初始化List View
     g_hList = CreateWindowEx(0, WC_LISTVIEW, NULL,
-				    LVS_REPORT | WS_CHILD | WS_VISIBLE | WS_BORDER,
+				    LVS_REPORT | WS_CHILD | WS_VISIBLE | WS_BORDER | LVS_ALIGNTOP,
 				    cListViewPos[0], cListViewPos[1], cListViewPos[2], cListViewPos[3],
 				    hDlg, (HMENU)ID_LISTVIEW, (HINSTANCE)GetWindowLong(hDlg, GWL_HINSTANCE), NULL);
+    ListView_EnableGroupView(g_hList, TRUE);
     ListView_SetExtendedListViewStyleEx(g_hList, 0, LVS_EX_GRIDLINES | LVS_EX_CHECKBOXES | LVS_EX_FULLROWSELECT);
     if (!InitListViewColumns(g_hList))
 	    EndDialog(hDlg, 0);
 		
+
     // 初始化 Status Bar
     g_hStatus = CreateStatusWindow(WS_CHILD | WS_VISIBLE, NULL, hDlg, ID_STATUSBAR);
     setpart[0] = 800;  setpart[1] = -1;
     SendMessage(g_hStatus, SB_SETPARTS, 2, (LPARAM)setpart);
+
 
     // 初始化按钮状态
     CheckDlgButton(hDlg, IDC_NEEDHASH, BST_CHECKED);
     CheckDlgButton(hDlg, IDC_SAMENAME, BST_CHECKED);
     SetDlgItemInt (hDlg, IDC_FILESIZE, 50, FALSE);
 
+
     // 加载右键菜单
     g_hMenu = LoadMenu(g_hInstance, MAKEINTRESOURCE(IDR_MENU1));
     g_hMenu = GetSubMenu(g_hMenu, 0);
     
+
     // 设置焦点
     SetFocus(GetDlgItem(hDlg, IDB_BROWSE));
     return FALSE;

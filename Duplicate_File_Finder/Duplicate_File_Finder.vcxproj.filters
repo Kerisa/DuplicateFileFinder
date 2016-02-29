@@ -58,4 +58,7 @@
       <Filter>资源文件</Filter>
     </None>
   </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="Duplicate_File_Finder.exe.manifest" />
+  </ItemGroup>
 </Project>

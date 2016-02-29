@@ -1,9 +1,10 @@
 
 #include "FileGroup.h"
+#include <CommCtrl.h>
 
-
-extern HWND g_hStatus;
+extern HWND g_hStatus, g_hList;
 extern void UpdateStatusBar(int part, const wchar_t *text);
+extern void InsertListViewItem(FileGroup::pFileInfo pfi, int groupid, std::wstring* phash = 0);
 
 
 FileGroup::FileGroup()
@@ -350,6 +351,13 @@ int FileGroup::HashFiles()
 
 int FileGroup::ExportData()
 {
+    LVGROUP group;
+
+    int gid         = 1;
+    group.cbSize    = sizeof(LVGROUP);
+    group.mask      = /*LVGF_HEADER | */LVGF_GROUPID;
+    
+
     if (m_Filter.Switch[FileGroup::FILTER::Compare_FileHash] != FileGroup::FILTER::Type_Off)
     {
         std::map<std::wstring, std::vector<pFileInfo>>::iterator it;
@@ -358,8 +366,13 @@ int FileGroup::ExportData()
         {
             if (it->second.size() > 1)
             {
+                group.iGroupId  = gid;
+                ListView_InsertGroup(g_hList, -1, &group);
+
                 for (it1=it->second.begin(); it1!=it->second.end(); ++it1)
-                    InsertListViewItem(*it1, const_cast<std::wstring*>(&it->first));
+                    InsertListViewItem(*it1, gid, const_cast<std::wstring*>(&it->first));
+                
+                ++gid;
             }
         }
     }
@@ -375,8 +388,13 @@ int FileGroup::ExportData()
             {
                 if (it->second.size() > 1)
                 {
+                    group.iGroupId  = gid;
+                    ListView_InsertGroup(g_hList, -1, &group);
+
                     for (it1=it->second.begin(); it1!=it->second.end(); ++it1)
-                       InsertListViewItem(&(*it1));
+                       InsertListViewItem(&(*it1), gid);
+
+                    ++gid;
                 }
             }
         }
@@ -395,8 +413,13 @@ int FileGroup::ExportData()
                 {
                     if (it1->second.size() > 1)
                     {
+                        group.iGroupId  = gid;
+                        ListView_InsertGroup(g_hList, -1, &group);
+
                         for (it2=it1->second.begin(); it2!=it1->second.end(); ++it2)
-                           InsertListViewItem(&(*it2));
+                           InsertListViewItem(&(*it2), gid);
+
+                        ++gid;
                     }
                 }
             }
@@ -415,8 +438,13 @@ int FileGroup::ExportData()
             {
                 if (it->second.size() > 1)
                 {
+                    group.iGroupId  = gid;
+                    ListView_InsertGroup(g_hList, -1, &group);
+
                     for (it1=it->second.begin(); it1!=it->second.end(); ++it1)
-                        InsertListViewItem(&(*it1));
+                        InsertListViewItem(&(*it1), gid);
+                    
+                    ++gid;
                 }
             }
         }
@@ -424,10 +452,13 @@ int FileGroup::ExportData()
 
     case StoreType_All:
         {
+            group.iGroupId  = gid;
+            ListView_InsertGroup(g_hList, -1, &group);
+
             std::vector<FileInfo>::iterator it;
             for (it=m_List0.begin(); it != m_List0.end(); ++it)
             {
-                InsertListViewItem(&(*it));
+                InsertListViewItem(&(*it), gid);
             }
         }
         break;
@@ -877,7 +908,6 @@ int FileGroup::StartSearchFiles()
     // ÉèÖÃ×´Ì¬À¸
     UpdateStatusBar(0, L"²Ù×÷½áÊø");
 
-    
     m_List1S.clear();
     m_List2SN.clear();
     m_List1N.clear();

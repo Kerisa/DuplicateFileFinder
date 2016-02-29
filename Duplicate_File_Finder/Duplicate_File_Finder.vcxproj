@@ -79,6 +79,9 @@
     <None Include="64x64.ico" />
     <None Include="bitbug_64.ico" />
   </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="Duplicate_File_Finder.exe.manifest" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

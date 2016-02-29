@@ -2,7 +2,8 @@
 
 #include "functions.h"
 
-extern HWND g_hList, g_hStatus;
+
+extern HWND      g_hList, g_hStatus;
 extern HINSTANCE g_hInstance;
 
 
@@ -183,25 +184,25 @@ int SelectSameHash(HWND g_hList)
 }
 
 
-void pInsertListViewItem(HWND g_hList, FileGroup::pFileInfo pfi, std::wstring* phash, DWORD index)			// 分组显示 : LVIF_GROUPID
+void pInsertListViewItem(HWND g_hList, FileGroup::pFileInfo pfi, std::wstring* phash, int groupid, DWORD index)			// 分组显示 : LVIF_GROUPID
 {
 	TCHAR		Buffer[128];
 	LVITEM		lvI;
 
 	RtlZeroMemory(&lvI, sizeof(LVITEM));
 	lvI.iItem		= index;
-	lvI.mask		= LVIF_TEXT;
+	lvI.mask		= LVIF_TEXT | LVIF_GROUPID;
 	lvI.cchTextMax	= 1024;
+    lvI.iGroupId    = groupid;
 
 	lvI.iSubItem = 0;
     lvI.pszText  = const_cast<wchar_t*>(pfi->Name.c_str());
 	ListView_InsertItem(g_hList, &lvI);                           // 先对subitem=0使用InsertItem
 
-	lvI.iSubItem = 1;
-    lvI.pszText	 = const_cast<wchar_t*>(pfi->Path.c_str());     // 对subitem>0使用SetItem
-	ListView_SetItem(g_hList, &lvI);
+
+	ListView_SetItemText(g_hList, 0, 1, const_cast<wchar_t*>(pfi->Path.c_str()));
 	
-    lvI.iSubItem = 2;
+
     if (pfi->Size > 966367641)		// 约为0.9GB
 	{
 		StringCbPrintf(Buffer, 120, TEXT("%.2lf GB"), pfi->Size/(double)0x40000000);
@@ -218,38 +219,33 @@ void pInsertListViewItem(HWND g_hList, FileGroup::pFileInfo pfi, std::wstring* p
     {
         StringCbPrintf(Buffer, 120, TEXT("%d B"), pfi->Size);
     }
-	lvI.pszText  = Buffer;
-	ListView_SetItem(g_hList, &lvI);
+    ListView_SetItemText(g_hList, 0, 2, Buffer);
 
 
     SYSTEMTIME st;
     FILETIME ft;
     
-    lvI.iSubItem = 3;
 	FileTimeToLocalFileTime(&pfi->CreationTime, &ft);
 	FileTimeToSystemTime(&ft, &st);
 	StringCbPrintf(Buffer, 120, TEXT("%04d/%02d/%02d %02d:%02d:%02d"),
         st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
-	lvI.pszText  = Buffer;
-	ListView_SetItem(g_hList, &lvI);
+    ListView_SetItemText(g_hList, 0, 3, Buffer);
 
-	lvI.iSubItem = 4;
+
     FileTimeToLocalFileTime(&pfi->LastWriteTime, &ft);
 	FileTimeToSystemTime(&ft, &st);
 	StringCbPrintf(Buffer, 120, TEXT("%04d/%02d/%02d %02d:%02d:%02d"),
         st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
-	lvI.pszText  = Buffer;
-	ListView_SetItem(g_hList, &lvI);
+    ListView_SetItemText(g_hList, 0, 4, Buffer);
 
-	lvI.iSubItem = 5;
-	lvI.pszText  = phash ? (LPTSTR)phash->c_str() : 0;
-	ListView_SetItem(g_hList, &lvI);
+
+	ListView_SetItemText(g_hList, 0, 5, phash ? (LPTSTR)phash->c_str() : 0);
 }
 
 
-void InsertListViewItem(FileGroup::pFileInfo pfi, std::wstring* phash)
+void InsertListViewItem(FileGroup::pFileInfo pfi, int groupid, std::wstring* phash)
 {
-    pInsertListViewItem(g_hList, pfi, phash, 0);
+    pInsertListViewItem(g_hList, pfi, phash, groupid, 0);
 }
 
 

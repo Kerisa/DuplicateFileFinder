@@ -139,10 +139,6 @@ public:
     bool    IsFileMatched    (const std::wstring & path, const PWIN32_FIND_DATA pwfd);
     int     StoreMatchedFile (const std::wstring & path, const PWIN32_FIND_DATA pwfd);
     int     StartSearchFiles ();
-
-    friend void InsertListViewItem       (FileGroup::pFileInfo pfi, std::wstring* phash = 0);
-    friend void LoadFilterConfigToDialog (HWND hDlg, FileGroup& fg);
-    friend void UpdateFilterConfig       (HWND hDlg, FileGroup& fg);
 };
 
 

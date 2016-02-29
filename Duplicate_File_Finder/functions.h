@@ -12,7 +12,7 @@ int  GetListViewCheckedCount (HWND g_hList);
 BOOL InitListViewColumns     (HWND g_hList);
 int  DelDifferentHash        (HWND g_hList);
 int  SelectSameHash          (HWND g_hList);
-void InsertListViewItem      (FileGroup::pFileInfo pfi, std::wstring* phash);
+void InsertListViewItem(FileGroup::pFileInfo pfi, int groupid, std::wstring* phash = 0);
 void SplitString             (const wchar_t *src,
                                  std::vector<std::wstring>& v,
                                  const wchar_t *key,
