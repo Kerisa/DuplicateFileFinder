@@ -236,14 +236,19 @@ void SHA_1::Sha1ProcessFinal(PSHA1INFO psi, PBYTE pBuffer, PBYTE pResult)
 int SHA_1::CalculateSha1(wchar_t *szFileName, CallBack callback)
 {
 	HANDLE		hFile;
-	BYTE		pbResultTmp[20], pbHashBuffer[SHA1_READ_BYTES+10];
+	BYTE		pbResultTmp[20];//, pbHashBuffer[SHA1_READ_BYTES+10];
 	DWORD		dwBytesRead;
 	int			iLoop, cnt = 0, ret = 0;
     bool        Continue = true;
 
+
+    PBYTE pbHashBuffer = (PBYTE)VirtualAlloc(
+        NULL, SHA1_READ_BYTES+10, MEM_COMMIT, PAGE_READWRITE);
+    if (!pbHashBuffer) return S_ERR_OTHERS;
+
 	if (INVALID_HANDLE_VALUE != 
 				(hFile = CreateFile(szFileName, GENERIC_READ, 
-					FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL)))
+					FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL)))
 	{
         ULARGE_INTEGER size;
         size.LowPart = GetFileSize(hFile, &size.HighPart);
@@ -302,9 +307,7 @@ int SHA_1::CalculateSha1(wchar_t *szFileName, CallBack callback)
             {
             }
         }
-
-		CloseHandle(hFile);
-		
+        		
         if (Continue)
         {
             ret = S_NO_ERR;
@@ -315,6 +318,9 @@ int SHA_1::CalculateSha1(wchar_t *szFileName, CallBack callback)
 	}
     else
         ret = S_FILE_OPEN_FAILED;
+    
+	CloseHandle(hFile);
+    VirtualFree(pbHashBuffer, 0, MEM_RELEASE);
 
     return ret;
 }
@@ -324,8 +330,12 @@ int SHA_1::CalculateSha1 (wchar_t *szFileName, ULONG64 offset, ULONG64 len, Call
     HANDLE		hFile;
 	DWORD		dwBytesRead = 0;
 	int			iLoop, cnt = 0, ret = 0;
-	BYTE		pbResultTmp[20], pbHashBuffer[SHA1_READ_BYTES+10];
+	BYTE		pbResultTmp[20];//, pbHashBuffer[SHA1_READ_BYTES+10];
     bool        Continue = true;
+
+    PBYTE pbHashBuffer = (PBYTE)VirtualAlloc(
+    NULL, SHA1_READ_BYTES+10, MEM_COMMIT, PAGE_READWRITE);
+    if (!pbHashBuffer) return S_ERR_OTHERS;
 
     do 
     {
@@ -452,6 +462,9 @@ int SHA_1::CalculateSha1 (wchar_t *szFileName, ULONG64 offset, ULONG64 len, Call
 
     
 	CloseHandle(hFile);
+
+    VirtualFree(pbHashBuffer, 0, MEM_RELEASE);
+
     return ret;
 
 }

@@ -471,7 +471,7 @@ int FileGroup::ExportData()
     return 0;
 }
 
-bool _cdecl HashCallback(const long long * const plen1, const long long * const plen2)
+inline bool _cdecl HashCallback(const long long * const plen1, const long long * const plen2)
 {
     return true;
 }

@@ -12,7 +12,7 @@ class SHA_1
         ZEN_LITTLE_ENDIAN,
         SHA1_BLOCK_SIZE = 64,
         SHA1_HASH_SIZE = 20,
-        __Scale = 512,
+        __Scale = 1024,
         SHA1_READ_BYTES = SHA1_BLOCK_SIZE * __Scale,
     };
 
