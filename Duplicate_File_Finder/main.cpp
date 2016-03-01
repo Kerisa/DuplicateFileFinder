@@ -22,6 +22,8 @@ FileGroup   g_FileGroup;
 
 static int iClickItem;
 
+volatile bool bTerminateThread;
+
 DWORD WINAPI    Thread          (PVOID pvoid);
 DWORD WINAPI    ThreadHashOnly  (PVOID pvoid);
 BOOL  CALLBACK  MainDlgProc     (HWND, UINT, WPARAM, LPARAM);
@@ -58,6 +60,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPreInstance,
 
 static bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
 {
+    static bool bPause = false;
+    static TCHAR staticBuf[MAX_PATH];
     TCHAR szBuffer[MAX_PATH], szBuffer1[MAX_PATH];
 
     switch (id)
@@ -160,29 +164,36 @@ static bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
         ListView_DeleteAllItems(g_hList);
         ListView_RemoveAllGroups(g_hList);
 
+        bPause = false;
+        bTerminateThread = false;
         SetEvent(g_ThreadSignal);
+        
         return TRUE;
 
     case IDB_PAUSE:
-	    //if (!bPaused)
-	    //{
-		   // SuspendThread(hThread);
-		   // SetDlgItemText(hwnd, IDB_PAUSE, TEXT("¼ÌÐø(&R)"));
-		   // SendMessage(g_hStatus, SB_SETTEXT, 0, (LPARAM)TEXT("ÔÝÍ£"));
-	    //}
-	    //else
-	    //{
-		   // ResumeThread(hThread);
-		   // SetDlgItemText(hwnd, IDB_PAUSE, TEXT("ÔÝÍ£(&P)"));
-	    //}
-	    //bPaused ^= 1;
+        //SetDlgItemText(hDlg, IDB_PAUSE, L"¼ÌÐø(&R)");
+        //SetWindowLong(GetDlgItem(hDlg, IDB_PAUSE), GWL_ID, IDB_RESUME);
+	    if (!bPause)
+	    {
+		    SuspendThread(g_hThread);
+		    SetDlgItemText(hDlg, IDB_PAUSE, TEXT("¼ÌÐø(&R)"));
+            SendMessage(g_hStatus, SB_GETTEXT, 0, (LPARAM)staticBuf);
+		    SendMessage(g_hStatus, SB_SETTEXT, 0, (LPARAM)TEXT("ÔÝÍ£"));
+	    }
+	    else
+	    {
+		    ResumeThread(g_hThread);
+		    SetDlgItemText(hDlg, IDB_PAUSE, TEXT("ÔÝÍ£(&P)"));
+            SendMessage(g_hStatus, SB_SETTEXT, 0, (LPARAM)staticBuf);
+	    }
+	    bPause ^= 1;
 	    return TRUE;
 
     case IDB_STOP:
-	    //params.bTerminate = TRUE;
-	    //if (bPaused)
-		   // ResumeThread(hThread);
-	    //SendMessage(g_hStatus, SB_SETTEXT, 0, (LPARAM)TEXT("ÓÃ»§ÖÕÖ¹"));
+	    bTerminateThread = true;
+	    if (bPause)
+		    ResumeThread(g_hThread);
+	    SendMessage(g_hStatus, SB_SETTEXT, 0, (LPARAM)TEXT("ÓÃ»§ÖÕÖ¹"));
 	    return TRUE;
     }
 
@@ -442,11 +453,6 @@ static bool Cls_OnInitDialog_filter(HWND hDlg, HWND hwndFocus, LPARAM lParam)
     SendMessage(hDlg, WM_COMMAND, IDC_CHECK_DATA, 0);
     LoadFilterConfigToDialog(hDlg, g_FileGroup);
     
-    
-    // TEST
-    SendDlgItemMessage(hDlg, IDC_LIST_DIR, LB_ADDSTRING, 0, 
-        (LPARAM)L"E:\\[test]");
-
     return true;
 }
 

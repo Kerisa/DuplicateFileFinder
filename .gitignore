@@ -21,11 +21,13 @@
 *.la
 *.a
 *.lib
+*.lastbuildstate
 
 # Executables
-*.exe
+#*.exe
 *.out
 *.app
 
 Debug
-Release
+*.tlog
+*.log

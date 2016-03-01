@@ -3,6 +3,7 @@
 #include <CommCtrl.h>
 
 extern HWND g_hStatus, g_hList;
+extern volatile bool bTerminateThread;
 extern void UpdateStatusBar(int part, const wchar_t *text);
 extern void InsertListViewItem(FileGroup::pFileInfo pfi, int groupid, std::wstring* phash = 0);
 
@@ -28,7 +29,7 @@ void FileGroup::InitFilter()
     m_Filter.ContainSuffix.clear();
     m_Filter.SearchDirectory.clear();
 
-    // TEST *************************************************************************
+    // Default ****************************************************************
 
     m_Filter.Switch[FILTER::Compare_FileSize] = FILTER::Type_Whole;
     m_Filter.Switch[FILTER::Compare_FileHash] = FILTER::Type_Whole;
@@ -473,7 +474,7 @@ int FileGroup::ExportData()
 
 inline bool _cdecl HashCallback(const long long * const plen1, const long long * const plen2)
 {
-    return true;
+    return !bTerminateThread;
 }
 
 

@@ -20,6 +20,9 @@ class PerformanceAnalyse
 {
 };
 
+class Log
+{
+};
 
 class FileGroup
 {
