@@ -18,7 +18,11 @@ HMENU		g_hMenu;							 // 全局变量
 HWND		g_hList, g_hStatus, g_hDlgFilter;
 HINSTANCE	g_hInstance;
 HANDLE      g_ThreadSignal, g_hThread;
-FileGroup   g_FileGroup;
+
+FileGroup   g_FileGroup, *g_pFileGroup;
+FileGroupS  g_FileGroupS;
+FileGroupN  g_FileGroupN;
+FileGroupSN g_FileGroupSN;
 
 static int iClickItem;
 
@@ -45,6 +49,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPreInstance,
     g_ThreadSignal = CreateEvent(0, FALSE, FALSE, 0);
 
     g_hThread = CreateThread(0, 0, Thread, 0, 0, 0);
+
+    g_pFileGroup = &g_FileGroup;    // 根据初始条件将指针指向基类FileGroup
 
 	if (-1 == DialogBoxParam(hInstance, MAKEINTRESOURCE(IDD_DFF), NULL, MainDlgProc, 0))
 	{
@@ -329,7 +335,8 @@ static bool Cls_OnCommand_filter(HWND hDlg, int id, HWND hwndCtl, UINT codeNotif
     switch (id)
     {
     case IDOK:
-        UpdateFilterConfig(hDlg, g_FileGroup);
+        DetermineStructType(hDlg);
+        UpdateFilterConfig(hDlg, *g_pFileGroup);
 
     case IDCANCEL:
         EndDialog(hDlg, 0);
@@ -451,7 +458,7 @@ static bool Cls_OnInitDialog_filter(HWND hDlg, HWND hwndFocus, LPARAM lParam)
     SendMessage(hDlg, WM_COMMAND, IDC_CHECK_SIZE, 0);
     SendMessage(hDlg, WM_COMMAND, IDC_CHECK_DATE, 0);
     SendMessage(hDlg, WM_COMMAND, IDC_CHECK_DATA, 0);
-    LoadFilterConfigToDialog(hDlg, g_FileGroup);
+    LoadFilterConfigToDialog(hDlg, *g_pFileGroup);
     
     return true;
 }
@@ -486,7 +493,7 @@ DWORD WINAPI Thread(PVOID pvoid)
 
         // if (...) ExitThread
 
-        g_FileGroup.StartSearchFiles();
+        g_pFileGroup->StartSearchFiles();
     }
 
     return 0;

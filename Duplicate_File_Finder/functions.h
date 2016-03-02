@@ -23,6 +23,7 @@ void SplitString             (const wchar_t *src,
 bool IsSubString             (const wchar_t* child, const wchar_t* parent, int pos = 0);
 bool HasParentDirectoryInList(HWND g_hList, const wchar_t *dir);
 void EnableControls          (HWND hDlg, int id, bool enable);
+void DetermineStructType     (HWND hDlg);
 void LoadFilterConfigToDialog(HWND hDlg, FileGroup& fg);
 void UpdateFilterConfig      (HWND hDlg, FileGroup& fg);
 

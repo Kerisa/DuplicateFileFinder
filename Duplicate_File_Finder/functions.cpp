@@ -6,6 +6,11 @@
 extern HWND      g_hList, g_hStatus;
 extern HINSTANCE g_hInstance;
 
+extern FileGroup   g_FileGroup, *g_pFileGroup;
+extern FileGroupS  g_FileGroupS;
+extern FileGroupN  g_FileGroupN;
+extern FileGroupSN g_FileGroupSN;
+
 
 void UpdateStatusBar(int part, const wchar_t *text)
 {
@@ -403,23 +408,43 @@ void EnableControls(HWND hDlg, int id, bool enable)
 }
 
 
+void DetermineStructType(HWND hDlg)
+{
+    bool name = IsDlgButtonChecked(hDlg, IDC_CHECK_NAME);
+    bool size = IsDlgButtonChecked(hDlg, IDC_CHECK_SIZE);
+    bool date = IsDlgButtonChecked(hDlg, IDC_CHECK_DATE);
+
+    if (name && (size || date))
+        g_pFileGroup = &g_FileGroupSN;
+
+    else if (!name && (size || date))
+        g_pFileGroup = &g_FileGroupS;
+
+    else if (name && !size && !date)
+        g_pFileGroup = &g_FileGroupN;
+
+    else
+        g_pFileGroup = &g_FileGroup;
+}
+
+
 void LoadFilterConfigToDialog(HWND hDlg, FileGroup& fg)
 {
     TCHAR Buffer[MAX_PATH];
 
     //------------------------------------------- 文件名
 
-    if (fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileName]
-        == FileGroup::FILTER::Type_Off)
+    if (fg.m_Filter.Switch[Filter::Compare_FileName]
+        == Filter::Type_Off)
         EnableControls(hDlg, IDC_CHECK_NAME, false);
     else
     {
         CheckDlgButton(hDlg, IDC_CHECK_NAME, 1);
         EnableControls(hDlg, IDC_CHECK_NAME, true);
 
-        switch (fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileName])
+        switch (fg.m_Filter.Switch[Filter::Compare_FileName])
         {
-        case FileGroup::FILTER::Type_Whole:
+        case Filter::Type_Whole:
             for (int i=IDC_RADIO_FULLNAME; i<=IDC_RADIO_PARTNAME; ++i)
                 CheckDlgButton(hDlg, i, i==IDC_RADIO_FULLNAME);
             
@@ -428,7 +453,7 @@ void LoadFilterConfigToDialog(HWND hDlg, FileGroup& fg)
 
             break;
 
-        case FileGroup::FILTER::Type_RangeMatch:
+        case Filter::Type_RangeMatch:
             for (int i=IDC_RADIO_FULLNAME; i<=IDC_RADIO_PARTNAME; ++i)
                 CheckDlgButton(hDlg, i, i==IDC_RADIO_PARTNAME);
 
@@ -442,7 +467,7 @@ void LoadFilterConfigToDialog(HWND hDlg, FileGroup& fg)
 
             break;
 
-        case FileGroup::FILTER::Type_Include:
+        case Filter::Type_Include:
             for (int i=IDC_RADIO_FULLNAME; i<=IDC_RADIO_PARTNAME; ++i)
                 CheckDlgButton(hDlg, i, i==IDC_RADIO_INCNAME);
 
@@ -458,8 +483,8 @@ void LoadFilterConfigToDialog(HWND hDlg, FileGroup& fg)
 
     //------------------------------------------- 文件大小
 
-    if (fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileSize]
-        == FileGroup::FILTER::Type_Off)
+    if (fg.m_Filter.Switch[Filter::Compare_FileSize]
+        == Filter::Type_Off)
         EnableControls(hDlg, IDC_CHECK_SIZE, false);
     else
     {
@@ -471,31 +496,31 @@ void LoadFilterConfigToDialog(HWND hDlg, FileGroup& fg)
     //------------------------------------------- 文件修改日期
 
     int status;
-    if ((status = fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileDate])
-        == FileGroup::FILTER::Type_Off)
+    if ((status = fg.m_Filter.Switch[Filter::Compare_FileDate])
+        == Filter::Type_Off)
         EnableControls(hDlg, IDC_CHECK_DATE, false);
     else
     {
         CheckDlgButton(hDlg, IDC_CHECK_DATE, 1);
         EnableControls(hDlg, IDC_CHECK_DATE, true);
 
-        CheckDlgButton(hDlg, IDC_CHECK_YEAR,  fg.m_Filter.SelectedDate & FileGroup::FILTER::Time_Year);
-        CheckDlgButton(hDlg, IDC_CHECK_MONTH, fg.m_Filter.SelectedDate & FileGroup::FILTER::Time_Month);
-        CheckDlgButton(hDlg, IDC_CHECK_DAY,   fg.m_Filter.SelectedDate & FileGroup::FILTER::Time_Day);
-        CheckDlgButton(hDlg, IDC_CHECK_WEEK,  fg.m_Filter.SelectedDate & FileGroup::FILTER::Time_Week);
+        CheckDlgButton(hDlg, IDC_CHECK_YEAR,  fg.m_Filter.SelectedDate & Filter::Time_Year);
+        CheckDlgButton(hDlg, IDC_CHECK_MONTH, fg.m_Filter.SelectedDate & Filter::Time_Month);
+        CheckDlgButton(hDlg, IDC_CHECK_DAY,   fg.m_Filter.SelectedDate & Filter::Time_Day);
+        CheckDlgButton(hDlg, IDC_CHECK_WEEK,  fg.m_Filter.SelectedDate & Filter::Time_Week);
     }
 
     //------------------------------------------- 文件内容
 
-    if ((status = fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileHash])
-        == FileGroup::FILTER::Type_Off)
+    if ((status = fg.m_Filter.Switch[Filter::Compare_FileHash])
+        == Filter::Type_Off)
         EnableControls(hDlg, IDC_CHECK_DATA, false);
     else
     {
         CheckDlgButton(hDlg, IDC_CHECK_DATA, 1);
         EnableControls(hDlg, IDC_CHECK_DATA, true);
 
-        if (status == FileGroup::FILTER::Type_Whole)
+        if (status == Filter::Type_Whole)
             for (int i=IDC_RADIO_DATAEQUAL; i<=IDC_RADIO_PARTDATAEQUAL; ++i)
                 CheckDlgButton(hDlg, i, i==IDC_RADIO_DATAEQUAL);
 
@@ -520,8 +545,8 @@ void LoadFilterConfigToDialog(HWND hDlg, FileGroup& fg)
 
     //------------------------------------------- 包含的扩展名
 
-    if ((status = fg.m_Filter.Switch[FileGroup::FILTER::Search_IncludeSuffix])
-        == FileGroup::FILTER::Type_Off) 
+    if ((status = fg.m_Filter.Switch[Filter::Search_IncludeSuffix])
+        == Filter::Type_Off) 
         SetDlgItemText(hDlg, IDC_COMBO_TYPEINC, L"");
     
     else
@@ -538,8 +563,8 @@ void LoadFilterConfigToDialog(HWND hDlg, FileGroup& fg)
 
     //------------------------------------------- 忽视的扩展名
 
-    if ((status = fg.m_Filter.Switch[FileGroup::FILTER::Search_IgnoreSuffix])
-        == FileGroup::FILTER::Type_Off) 
+    if ((status = fg.m_Filter.Switch[Filter::Search_IgnoreSuffix])
+        == Filter::Type_Off) 
         SetDlgItemText(hDlg, IDC_COMBO_TYPEIGN, L"");
     
     else
@@ -556,8 +581,8 @@ void LoadFilterConfigToDialog(HWND hDlg, FileGroup& fg)
 
     //------------------------------------------- 查找的文件大小范围
 
-    if ((status = fg.m_Filter.Switch[FileGroup::FILTER::Search_FileSize])
-        == FileGroup::FILTER::Type_Off)
+    if ((status = fg.m_Filter.Switch[Filter::Search_FileSize])
+        == Filter::Type_Off)
         EnableControls(hDlg, IDC_CHECK_SIZERANGE, false);
     else
     {
@@ -565,9 +590,9 @@ void LoadFilterConfigToDialog(HWND hDlg, FileGroup& fg)
         EnableControls(hDlg, IDC_CHECK_SIZERANGE, true);
 
         CheckDlgButton(hDlg, IDC_RADIO_SIZERANGE_INC,
-            status == FileGroup::FILTER::Type_Include);
+            status == Filter::Type_Include);
         CheckDlgButton(hDlg, IDC_RADIO_SIZERANGE_IGN,
-            status == FileGroup::FILTER::Type_Ignore);
+            status == Filter::Type_Ignore);
 
         StringCchPrintf(Buffer, MAX_PATH, L"%d",
             fg.m_Filter.FileSizeRange.LowerBound);
@@ -582,8 +607,8 @@ void LoadFilterConfigToDialog(HWND hDlg, FileGroup& fg)
 
     //------------------------------------------- 查找的文件属性
 
-    if ((status = fg.m_Filter.Switch[FileGroup::FILTER::Search_FileAttribute])
-        == FileGroup::FILTER::Type_Off)
+    if ((status = fg.m_Filter.Switch[Filter::Search_FileAttribute])
+        == Filter::Type_Off)
         EnableControls(hDlg, IDC_CHECK_ATTRIB, false);
     else
     {
@@ -591,15 +616,15 @@ void LoadFilterConfigToDialog(HWND hDlg, FileGroup& fg)
         EnableControls(hDlg, IDC_CHECK_ATTRIB, true);
 
         CheckDlgButton(hDlg, IDC_RADIO_ATTRIB_INC,
-            status == FileGroup::FILTER::Type_Include);
+            status == Filter::Type_Include);
         CheckDlgButton(hDlg, IDC_RADIO_ATTRIB_IGN,
-            status == FileGroup::FILTER::Type_Ignore);
+            status == Filter::Type_Ignore);
 
-        CheckDlgButton(hDlg, IDC_CHECK_ATTR_A, fg.m_Filter.SelectedAttributes & FileGroup::FILTER::Attrib_Archive);
-        CheckDlgButton(hDlg, IDC_CHECK_ATTR_R, fg.m_Filter.SelectedAttributes & FileGroup::FILTER::Attrib_ReadOnly);
-        CheckDlgButton(hDlg, IDC_CHECK_ATTR_S, fg.m_Filter.SelectedAttributes & FileGroup::FILTER::Attrib_System);
-        CheckDlgButton(hDlg, IDC_CHECK_ATTR_H, fg.m_Filter.SelectedAttributes & FileGroup::FILTER::Attrib_Hide);
-        CheckDlgButton(hDlg, IDC_CHECK_ATTR_N, fg.m_Filter.SelectedAttributes & FileGroup::FILTER::Attrib_Normal);
+        CheckDlgButton(hDlg, IDC_CHECK_ATTR_A, fg.m_Filter.SelectedAttributes & Filter::Attrib_Archive);
+        CheckDlgButton(hDlg, IDC_CHECK_ATTR_R, fg.m_Filter.SelectedAttributes & Filter::Attrib_ReadOnly);
+        CheckDlgButton(hDlg, IDC_CHECK_ATTR_S, fg.m_Filter.SelectedAttributes & Filter::Attrib_System);
+        CheckDlgButton(hDlg, IDC_CHECK_ATTR_H, fg.m_Filter.SelectedAttributes & Filter::Attrib_Hide);
+        CheckDlgButton(hDlg, IDC_CHECK_ATTR_N, fg.m_Filter.SelectedAttributes & Filter::Attrib_Normal);
     }
 
     //------------------------------------------- 查找的目录
@@ -623,21 +648,21 @@ void UpdateFilterConfig(HWND hDlg, FileGroup& fg)
     //------------------------------------------- 文件名
 
     if (!IsDlgButtonChecked(hDlg, IDC_CHECK_NAME))
-        fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileName] =
-            FileGroup::FILTER::Type_Off;
+        fg.m_Filter.Switch[Filter::Compare_FileName] =
+            Filter::Type_Off;
     else
     {
         if (IsDlgButtonChecked(hDlg, IDC_RADIO_FULLNAME))
         {
-            fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileName] =
-                FileGroup::FILTER::Type_Whole;
+            fg.m_Filter.Switch[Filter::Compare_FileName] =
+                Filter::Type_Whole;
             fg.m_Filter.FileNameWithoutSuffix =
                 IsDlgButtonChecked(hDlg, IDC_CHECK_NOSUFFIX);
         }
         else if (IsDlgButtonChecked(hDlg, IDC_RADIO_PARTNAME))
         {
-            fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileName] =
-                FileGroup::FILTER::Type_RangeMatch;
+            fg.m_Filter.Switch[Filter::Compare_FileName] =
+                Filter::Type_RangeMatch;
             GetDlgItemText(hDlg, IDC_EDIT_NAMEBEG, Buffer, MAX_PATH);
             fg.m_Filter.FileNameRange.LowerBound = _wtoi(Buffer);
             GetDlgItemText(hDlg, IDC_EDIT_NAMEEND, Buffer, MAX_PATH);
@@ -645,8 +670,8 @@ void UpdateFilterConfig(HWND hDlg, FileGroup& fg)
         }
         else if (IsDlgButtonChecked(hDlg, IDC_RADIO_INCNAME))
         {
-            fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileName] =
-                FileGroup::FILTER::Type_Include;
+            fg.m_Filter.Switch[Filter::Compare_FileName] =
+                Filter::Type_Include;
             GetDlgItemText(hDlg, IDC_EDIT_NAMEINC, Buffer, MAX_PATH);
             fg.m_Filter.KeyWordOfFileName = Buffer;
         }
@@ -655,51 +680,51 @@ void UpdateFilterConfig(HWND hDlg, FileGroup& fg)
     //------------------------------------------- 文件大小
 
     if (!IsDlgButtonChecked(hDlg, IDC_CHECK_SIZE))
-        fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileSize] =
-            FileGroup::FILTER::Type_Off;
+        fg.m_Filter.Switch[Filter::Compare_FileSize] =
+            Filter::Type_Off;
     else
     {
-        fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileSize] =
-            FileGroup::FILTER::Type_Whole;
+        fg.m_Filter.Switch[Filter::Compare_FileSize] =
+            Filter::Type_Whole;
     }
 
     //------------------------------------------- 修改日期
 
     if (!IsDlgButtonChecked(hDlg, IDC_CHECK_DATE))
-        fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileDate] =
-            FileGroup::FILTER::Type_Off;
+        fg.m_Filter.Switch[Filter::Compare_FileDate] =
+            Filter::Type_Off;
     else
     {
-        fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileDate] =
-            FileGroup::FILTER::Type_On;
+        fg.m_Filter.Switch[Filter::Compare_FileDate] =
+            Filter::Type_On;
         
         fg.m_Filter.SelectedDate = 0;
         if (IsDlgButtonChecked(hDlg, IDC_CHECK_YEAR))
-            fg.m_Filter.SelectedDate |= FileGroup::FILTER::Time_Year;
+            fg.m_Filter.SelectedDate |= Filter::Time_Year;
         if (IsDlgButtonChecked(hDlg, IDC_CHECK_MONTH))
-            fg.m_Filter.SelectedDate |= FileGroup::FILTER::Time_Month;
+            fg.m_Filter.SelectedDate |= Filter::Time_Month;
         if (IsDlgButtonChecked(hDlg, IDC_CHECK_DAY))
-            fg.m_Filter.SelectedDate |= FileGroup::FILTER::Time_Day;
+            fg.m_Filter.SelectedDate |= Filter::Time_Day;
         if (IsDlgButtonChecked(hDlg, IDC_CHECK_WEEK))
-            fg.m_Filter.SelectedDate |= FileGroup::FILTER::Time_Week;
+            fg.m_Filter.SelectedDate |= Filter::Time_Week;
     }
 
     //------------------------------------------- 文件内容
 
     if (!IsDlgButtonChecked(hDlg, IDC_CHECK_DATA))
-        fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileHash] =
-            FileGroup::FILTER::Type_Off;
+        fg.m_Filter.Switch[Filter::Compare_FileHash] =
+            Filter::Type_Off;
     else
     {
         if (IsDlgButtonChecked(hDlg, IDC_RADIO_DATAEQUAL))
         {
-            fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileHash] =
-                FileGroup::FILTER::Type_Whole;
+            fg.m_Filter.Switch[Filter::Compare_FileHash] =
+                Filter::Type_Whole;
         }
         else
         {
-            fg.m_Filter.Switch[FileGroup::FILTER::Compare_FileHash] =
-                FileGroup::FILTER::Type_RangeMatch;
+            fg.m_Filter.Switch[Filter::Compare_FileHash] =
+                Filter::Type_RangeMatch;
 
             GetDlgItemText(hDlg, IDC_EDIT_DATABEG, Buffer, MAX_PATH);
             fg.m_Filter.FileDataRange.LowerBound = _wtoi(Buffer);
@@ -714,58 +739,58 @@ void UpdateFilterConfig(HWND hDlg, FileGroup& fg)
     //------------------------------------------- 包含类型
 
     fg.m_Filter.ContainSuffix.clear();
-    fg.m_Filter.Switch[FileGroup::FILTER::Search_IncludeSuffix] =
-                FileGroup::FILTER::Type_Off;
+    fg.m_Filter.Switch[Filter::Search_IncludeSuffix] =
+                Filter::Type_Off;
 
     int idx;
     if ((idx = SendDlgItemMessage(hDlg, IDC_COMBO_TYPEINC, CB_GETCURSEL, 0, 0)) != CB_ERR)
     {
         LoadString(g_hInstance, idx+IDS_STRING103, Buffer, MAX_PATH);
         SplitString(Buffer, fg.m_Filter.ContainSuffix, L"|", L'(', L')', true);
-        fg.m_Filter.Switch[FileGroup::FILTER::Search_IncludeSuffix] =
-                FileGroup::FILTER::Type_On;
+        fg.m_Filter.Switch[Filter::Search_IncludeSuffix] =
+                Filter::Type_On;
     }
     else if (idx == CB_ERR)
     {
         GetDlgItemText(hDlg, IDC_COMBO_TYPEINC, Buffer, MAX_PATH);
         SplitString(Buffer, fg.m_Filter.ContainSuffix, L"|", 0, 0, true);
         if (fg.m_Filter.ContainSuffix.size() > 0)
-            fg.m_Filter.Switch[FileGroup::FILTER::Search_IncludeSuffix] =
-                FileGroup::FILTER::Type_On;
+            fg.m_Filter.Switch[Filter::Search_IncludeSuffix] =
+                Filter::Type_On;
     }
     
 
     //------------------------------------------- 忽略类型
 
     fg.m_Filter.IgnoreSuffix.clear();
-    fg.m_Filter.Switch[FileGroup::FILTER::Search_IgnoreSuffix] = FileGroup::FILTER::Type_Off;
+    fg.m_Filter.Switch[Filter::Search_IgnoreSuffix] = Filter::Type_Off;
 
     if ((idx = SendDlgItemMessage(hDlg, IDC_COMBO_TYPEIGN, CB_GETCURSEL, 0, 0)) != CB_ERR)
     {
         LoadString(g_hInstance, idx+IDS_STRING103, Buffer, MAX_PATH);
         SplitString(Buffer, fg.m_Filter.IgnoreSuffix, L"|", L'(', L')', true);
-        fg.m_Filter.Switch[FileGroup::FILTER::Search_IgnoreSuffix] = FileGroup::FILTER::Type_On;
+        fg.m_Filter.Switch[Filter::Search_IgnoreSuffix] = Filter::Type_On;
     }
     else if (idx == CB_ERR)
     {
         GetDlgItemText(hDlg, IDC_COMBO_TYPEIGN, Buffer, MAX_PATH);
         SplitString(Buffer, fg.m_Filter.IgnoreSuffix, L"|", 0, 0, true);
         if (fg.m_Filter.IgnoreSuffix.size() > 0)
-            fg.m_Filter.Switch[FileGroup::FILTER::Search_IgnoreSuffix] = FileGroup::FILTER::Type_On;
+            fg.m_Filter.Switch[Filter::Search_IgnoreSuffix] = Filter::Type_On;
     }
 
 
     //------------------------------------------- 文件大小范围
 
     if (!IsDlgButtonChecked(hDlg, IDC_CHECK_SIZERANGE))
-        fg.m_Filter.Switch[FileGroup::FILTER::Search_FileSize] =
-            FileGroup::FILTER::Type_Off;
+        fg.m_Filter.Switch[Filter::Search_FileSize] =
+            Filter::Type_Off;
     else
     {
-        fg.m_Filter.Switch[FileGroup::FILTER::Search_FileSize] =
+        fg.m_Filter.Switch[Filter::Search_FileSize] =
             (IsDlgButtonChecked(hDlg, IDC_RADIO_SIZERANGE_INC) ?
-                FileGroup::FILTER::Type_Include :
-                FileGroup::FILTER::Type_Ignore);
+                Filter::Type_Include :
+                Filter::Type_Ignore);
         
         GetDlgItemText(hDlg, IDC_EDIT_SIZEBEG, Buffer, MAX_PATH);
         fg.m_Filter.FileSizeRange.LowerBound = _wtoi(Buffer);
@@ -776,27 +801,27 @@ void UpdateFilterConfig(HWND hDlg, FileGroup& fg)
     //------------------------------------------- 文件属性
 
     if (!IsDlgButtonChecked(hDlg, IDC_CHECK_ATTRIB))
-        fg.m_Filter.Switch[FileGroup::FILTER::Search_FileAttribute] =
-            FileGroup::FILTER::Type_Off;
+        fg.m_Filter.Switch[Filter::Search_FileAttribute] =
+            Filter::Type_Off;
     else
     {
-        fg.m_Filter.Switch[FileGroup::FILTER::Search_FileAttribute] =
+        fg.m_Filter.Switch[Filter::Search_FileAttribute] =
             (IsDlgButtonChecked(hDlg, IDC_RADIO_ATTRIB_INC) ?
-                FileGroup::FILTER::Type_Include :
-                FileGroup::FILTER::Type_Ignore);
+                Filter::Type_Include :
+                Filter::Type_Ignore);
         
         fg.m_Filter.SelectedAttributes = 0;
 
         fg.m_Filter.SelectedAttributes |= IsDlgButtonChecked(hDlg, IDC_CHECK_ATTR_A) ?
-            FileGroup::FILTER::Attrib_Archive : 0;
+            Filter::Attrib_Archive : 0;
         fg.m_Filter.SelectedAttributes |= IsDlgButtonChecked(hDlg, IDC_CHECK_ATTR_R) ?
-            FileGroup::FILTER::Attrib_ReadOnly : 0;
+            Filter::Attrib_ReadOnly : 0;
         fg.m_Filter.SelectedAttributes |= IsDlgButtonChecked(hDlg, IDC_CHECK_ATTR_S) ?
-            FileGroup::FILTER::Attrib_System : 0;
+            Filter::Attrib_System : 0;
         fg.m_Filter.SelectedAttributes |= IsDlgButtonChecked(hDlg, IDC_CHECK_ATTR_H) ?
-            FileGroup::FILTER::Attrib_Hide : 0;
+            Filter::Attrib_Hide : 0;
         fg.m_Filter.SelectedAttributes |= IsDlgButtonChecked(hDlg, IDC_CHECK_ATTR_N) ?
-            FileGroup::FILTER::Attrib_Normal : 0;
+            Filter::Attrib_Normal : 0;
     }
 
     //------------------------------------------- 搜索路径
