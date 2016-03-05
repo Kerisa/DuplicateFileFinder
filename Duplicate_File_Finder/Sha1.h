@@ -18,9 +18,9 @@ class SHA_1
 
     typedef struct
     {
-	    LONGLONG    length;		// 文件长度
-	    LONGLONG    uplength;	// 未处理长度
-	    DWORD       _hash[5];	// Hash结果
+        LONGLONG    length;		// 文件长度
+        LONGLONG    uplength;	// 未处理长度
+        DWORD       _hash[5];	// Hash结果
     }
     SHA1INFO, *PSHA1INFO;
 
@@ -34,15 +34,15 @@ class SHA_1
     ULONG ZEN_SWAP_UINT32(ULONG x)
     {
         return ((x & 0xff000000) >> 24) | ((x & 0x000000ff) << 24) |
-		       ((x & 0x0000ff00) <<  8) | ((x & 0x00ff0000) >>  8);
+               ((x & 0x0000ff00) <<  8) | ((x & 0x00ff0000) >>  8);
     }
 
     ULONG64 ZEN_SWAP_UINT64(ULONG64 x)
     {
         return ((x & 0xff00000000000000) >> 56) | ((x & 0x00000000000000ff) << 56) | 
                ((x & 0x000000000000ff00) << 40) | ((x & 0x00ff000000000000) >> 40) |
-		       ((x & 0x0000ff0000000000) >> 24) | ((x & 0x0000000000ff0000) << 24) | 
-		       ((x & 0x00000000ff000000) <<  8) | ((x & 0x000000ff00000000) >>  8);
+               ((x & 0x0000ff0000000000) >> 24) | ((x & 0x0000000000ff0000) << 24) | 
+               ((x & 0x00000000ff000000) <<  8) | ((x & 0x000000ff00000000) >>  8);
     }
 
     // 循环位移

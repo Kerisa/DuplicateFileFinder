@@ -99,25 +99,13 @@ public:
     FileInfo, *pFileInfo;
 
     // 列出所有文件
-    std::vector<FileInfo>                                                   m_List0;
+    std::vector<FileInfo>                                   m_List0;
 
     // 哈希 - 对以上结果使用哈希 (勾上哈希时同时勾上“大小”)
-    std::map<std::wstring, std::vector<pFileInfo>>                           m_List1H;
+    std::map<std::wstring, std::vector<pFileInfo>>          m_List1H;
     
-    
-    // 根据过滤条件确定使用何种容器存储临时数据
-    //int m_StoreType;
-    
-
-    // 筛选出容器中满足其他条件的文件进行哈希
-    //int pHashFiles1S  ();
-    //int pHashFiles2SN ();
-    //int pHashFiles1N  ();
-    //int pHashFiles0   ();
-    
-
 public:
-	Filter m_Filter;
+    Filter m_Filter;
 
     FileGroup();
     void    InitFilter       ();

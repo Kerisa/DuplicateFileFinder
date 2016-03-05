@@ -386,7 +386,7 @@ int FileGroup::FindFiles(const std::wstring& dirPath, int depth)
     WIN32_FIND_DATA wfd;
     std::wstring path, search;
 
-	path = dirPath + L"\\*.*";
+    path = dirPath + L"\\*.*";
 
     // 更新状态栏
     std::wstring status(L"正在查找: ");
@@ -394,29 +394,29 @@ int FileGroup::FindFiles(const std::wstring& dirPath, int depth)
     UpdateStatusBar(0, status.c_str());
 
     hFind = FindFirstFile(path.c_str(), &wfd);
-	if (hFind != INVALID_HANDLE_VALUE)
-	{
-		do
-		{
-			if (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-			{
-				if (depth != 0 &&
+    if (hFind != INVALID_HANDLE_VALUE)
+    {
+        do
+        {
+            if (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+            {
+                if (depth != 0 &&
                     wcscmp(wfd.cFileName, L".") && wcscmp(wfd.cFileName, L".."))	// 递归查找子文件夹
-				{
-					search = dirPath;
+                {
+                    search = dirPath;
                     search += L"\\";
                     search += wfd.cFileName;
-					FindFiles(search, depth==-1 ? -1 : depth-1);
-				}
-			}
-			else if (IsFileMatched(dirPath, &wfd))	// 文件类型过滤
-			{
+                    FindFiles(search, depth==-1 ? -1 : depth-1);
+                }
+            }
+            else if (IsFileMatched(dirPath, &wfd))	// 文件类型过滤
+            {
                 StoreMatchedFile(dirPath, &wfd);
-			}
-		}
+            }
+        }
         while (FindNextFile(hFind, &wfd));
-	}
-	FindClose(hFind);
+    }
+    FindClose(hFind);
 
     return 0;
 }
