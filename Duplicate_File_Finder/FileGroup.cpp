@@ -1,5 +1,7 @@
 
+
 #include "FileGroup.h"
+#include "crc32.h"
 #include <CommCtrl.h>
 
 extern HWND g_hStatus, g_hList;
@@ -10,6 +12,7 @@ extern void InsertListViewItem(FileGroup::pFileInfo pfi, int groupid, std::wstri
 
 FileGroup::FileGroup()
 {
+    create_crc_table();
     InitFilter();
 }
 
@@ -112,16 +115,16 @@ int FileGroup::ExportHashData()
     group.cbSize    = sizeof(LVGROUP);
     group.mask      = /*LVGF_HEADER | */LVGF_GROUPID;
 
-    std::map<std::wstring, std::vector<pFileInfo>>::iterator it;
-    std::vector<pFileInfo>::iterator it1;
-    for (it=m_List1H.begin(); it != m_List1H.end(); ++it)
+    //std::map<std::wstring, std::vector<pFileInfo>>::iterator it;
+    //std::vector<pFileInfo>::iterator it1;
+    for (auto it=m_List1H.begin(); it != m_List1H.end(); ++it)
     {
         if (it->second.size() > 1)
         {
             group.iGroupId  = gid;
             ListView_InsertGroup(g_hList, -1, &group);
 
-            for (it1=it->second.begin(); it1!=it->second.end(); ++it1)
+            for (auto it1=it->second.begin(); it1!=it->second.end(); ++it1)
                 InsertListViewItem(*it1, gid, const_cast<std::wstring*>(&it->first));
                 
             ++gid;
@@ -218,9 +221,7 @@ int FileGroup::PerformHash(const std::wstring& name, std::wstring& result, ULONG
 
 int FileGroup::HashFiles()
 {
-    std::vector<FileInfo>::iterator it;
-            
-    for (it=m_List0.begin(); it!=m_List0.end(); ++it)
+    for (auto it=m_List0.begin(); it!=m_List0.end(); ++it)
     {
         std::wstring str, tmp(it->Path);
         (tmp += L'\\') += it->Name;
@@ -430,8 +431,7 @@ int FileGroup::StartSearchFiles()
     // 设置状态栏
     UpdateStatusBar(0, L"查找文件...");
 
-    std::map<std::wstring, int>::iterator it;
-    for (it=m_Filter.SearchDirectory.begin(); it!=m_Filter.SearchDirectory.end(); ++it)
+    for (auto it=m_Filter.SearchDirectory.begin(); it!=m_Filter.SearchDirectory.end(); ++it)
     {
         FindFiles(it->first, 100);
     }
@@ -462,13 +462,10 @@ int FileGroup::StartSearchFiles()
 
 int FileGroupS::HashFiles()
 {
-    std::map<ULONG64, std::vector<FileInfo>>::iterator it;
-    for (it=m_List1S.begin(); it!=m_List1S.end(); ++it)
+    for (auto it=m_List1S.begin(); it!=m_List1S.end(); ++it)
         if (it->second.size() > 1)
         {
-            std::vector<FileInfo>::iterator it1;
-            
-            for (it1=it->second.begin(); it1!=it->second.end(); ++it1)
+            for (auto it1=it->second.begin(); it1!=it->second.end(); ++it1)
             {
                 std::wstring str, tmp(it1->Path);
                 (tmp += L'\\') += it1->Name;
@@ -506,16 +503,14 @@ int FileGroupS::ExportData()
     }
     else
     {
-        std::map<ULONG64, std::vector<FileInfo>>::iterator it;
-        std::vector<FileInfo>::iterator it1;
-        for (it=m_List1S.begin(); it != m_List1S.end(); ++it)
+        for (auto it=m_List1S.begin(); it != m_List1S.end(); ++it)
         {
             if (it->second.size() > 1)
             {
                 group.iGroupId  = gid;
                 ListView_InsertGroup(g_hList, -1, &group);
 
-                for (it1=it->second.begin(); it1!=it->second.end(); ++it1)
+                for (auto it1=it->second.begin(); it1!=it->second.end(); ++it1)
                     InsertListViewItem(&(*it1), gid);
 
                 ++gid;
@@ -546,7 +541,7 @@ int FileGroupS::StoreMatchedFile(const std::wstring & path, const PWIN32_FIND_DA
     fi.CreationTime   = pwfd->ftCreationTime;
     fi.LastWriteTime  = pwfd->ftLastWriteTime;
 
-    std::map<ULONG64, std::vector<FileInfo>>::iterator it = m_List1S.find(idx);
+    auto it = m_List1S.find(idx);
     if (it != m_List1S.end())
         it->second.push_back(fi);
 
@@ -568,8 +563,7 @@ int FileGroupS::StartSearchFiles()
     // 设置状态栏
     UpdateStatusBar(0, L"查找文件...");
 
-    std::map<std::wstring, int>::iterator it;
-    for (it=m_Filter.SearchDirectory.begin(); it!=m_Filter.SearchDirectory.end(); ++it)
+    for (auto it=m_Filter.SearchDirectory.begin(); it!=m_Filter.SearchDirectory.end(); ++it)
     {
         FindFiles(it->first, 100);
     }
@@ -600,13 +594,10 @@ int FileGroupS::StartSearchFiles()
 
 int FileGroupN::HashFiles()
 {
-    std::map<std::wstring, std::vector<FileInfo>>::iterator it;
-    for (it=m_List1N.begin(); it!=m_List1N.end(); ++it)
+    for (auto it=m_List1N.begin(); it!=m_List1N.end(); ++it)
         if (it->second.size() > 1)
         {
-            std::vector<FileInfo>::iterator it1;
-            
-            for (it1=it->second.begin(); it1!=it->second.end(); ++it1)
+            for (auto it1=it->second.begin(); it1!=it->second.end(); ++it1)
             {
                 std::wstring str, tmp(it1->Path);
                 (tmp += L'\\') += it1->Name;
@@ -645,16 +636,14 @@ int FileGroupN::ExportData()
     }
     else
     {
-        std::map<std::wstring, std::vector<FileInfo>>::iterator it;
-        std::vector<FileInfo>::iterator it1;
-        for (it=m_List1N.begin(); it!=m_List1N.end(); ++it)
+        for (auto it=m_List1N.begin(); it!=m_List1N.end(); ++it)
         {
             if (it->second.size() > 1)
             {
                 group.iGroupId  = gid;
                 ListView_InsertGroup(g_hList, -1, &group);
 
-                for (it1=it->second.begin(); it1!=it->second.end(); ++it1)
+                for (auto it1=it->second.begin(); it1!=it->second.end(); ++it1)
                     InsertListViewItem(&(*it1), gid);
                     
                 ++gid;
@@ -685,7 +674,7 @@ int FileGroupN::StoreMatchedFile(const std::wstring & path, const PWIN32_FIND_DA
     fi.CreationTime   = pwfd->ftCreationTime;
     fi.LastWriteTime  = pwfd->ftLastWriteTime;
 
-    std::map<std::wstring, std::vector<FileInfo>>::iterator it;
+    std::map<DWORD, std::vector<FileInfo>>::iterator it;
     std::vector<FileInfo>::iterator it1;
 
     switch (m_Filter.Switch[m_Filter.Compare_FileName])
@@ -699,13 +688,15 @@ int FileGroupN::StoreMatchedFile(const std::wstring & path, const PWIN32_FIND_DA
                 name = name.substr(0, pos);
             }
 
-            if ((it = m_List1N.find(name)) != m_List1N.end())
+            DWORD crc = CRC32_4((PBYTE)name.c_str(), 0, name.size() * 2);
+
+            if ((it = m_List1N.find(crc)) != m_List1N.end())
                 it->second.push_back(fi);
             else
             {
                 std::vector<FileInfo> v;
                 v.push_back(fi);
-                m_List1N.insert(std::make_pair(name, v));
+                m_List1N.insert(std::make_pair(crc, v));
             }
         }
         break;
@@ -713,13 +704,14 @@ int FileGroupN::StoreMatchedFile(const std::wstring & path, const PWIN32_FIND_DA
     case Filter::Type_Include:
         if (name.find(m_Filter.KeyWordOfFileName) != std::wstring::npos)
         {
-            if ((it = m_List1N.find(m_Filter.KeyWordOfFileName)) != m_List1N.end())
+            // 这里 map 只有一对键值<keyname - vector>
+            if ((it = m_List1N.find(0)) != m_List1N.end())
                 it->second.push_back(fi);
             else
             {
                 std::vector<FileInfo> v;
                 v.push_back(fi);
-                m_List1N.insert(std::make_pair(m_Filter.KeyWordOfFileName, v));
+                m_List1N.insert(std::make_pair(0, v));
             }
         }
         break;
@@ -727,19 +719,24 @@ int FileGroupN::StoreMatchedFile(const std::wstring & path, const PWIN32_FIND_DA
     case Filter::Type_RangeMatch:
         try
         {
-            std::wstring part = std::wstring(name, m_Filter.FileNameRange.LowerBound - 1,
-                m_Filter.FileNameRange.UpperBound - m_Filter.FileNameRange.LowerBound + 1);
-            if (part.size() <
-                m_Filter.FileNameRange.UpperBound - m_Filter.FileNameRange.LowerBound + 1)
+            int len = m_Filter.FileNameRange.UpperBound - m_Filter.FileNameRange.LowerBound + 1;
+
+            if (len < 0
+                || name.size() < len
+                || m_Filter.FileNameRange.LowerBound < 1
+                || name.size() < m_Filter.FileNameRange.UpperBound - 1)
                 break;
 
-            if ((it = m_List1N.find(part)) != m_List1N.end())
+            DWORD crc = CRC32_4((PBYTE)name.c_str() + m_Filter.FileNameRange.LowerBound * 2 - 2,
+                0, len * 2);
+
+            if ((it = m_List1N.find(crc)) != m_List1N.end())
                     it->second.push_back(fi);
             else
             {
                 std::vector<FileInfo> v;
                 v.push_back(fi);
-                m_List1N.insert(std::make_pair(part, v));
+                m_List1N.insert(std::make_pair(crc, v));
             }
         }
         catch (...) { }
@@ -793,16 +790,13 @@ int FileGroupN::StartSearchFiles()
 
 int FileGroupSN::HashFiles()
 {
-    std::multimap<ULONG64, std::map<std::wstring, std::vector<FileInfo>>>::iterator it;
-    for (it=m_List2SN.begin(); it!=m_List2SN.end(); ++it)
+    for (auto it=m_List2SN.begin(); it!=m_List2SN.end(); ++it)
     {
-        std::map<std::wstring, std::vector<FileInfo>>::iterator it1;
-        for (it1=it->second.begin(); it1!=it->second.end(); ++it1)
+        for (auto it1=it->second.begin(); it1!=it->second.end(); ++it1)
         {
             if (it1->second.size() > 1)
             {
-                std::vector<FileInfo>::iterator it2;
-                for (it2=it1->second.begin(); it2!=it1->second.end(); ++it2)
+                for (auto it2=it1->second.begin(); it2!=it1->second.end(); ++it2)
                 {
                     std::wstring str, tmp(it2->Path);
                     (tmp += L'\\') += it2->Name;
@@ -841,19 +835,16 @@ int FileGroupSN::ExportData()
     }
     else
     {
-        std::multimap<ULONG64, std::map<std::wstring, std::vector<FileInfo>>>::iterator it;
-        std::map<std::wstring, std::vector<FileInfo>>::iterator it1;
-        std::vector<FileInfo>::iterator it2;
-        for (it=m_List2SN.begin(); it != m_List2SN.end(); ++it)
+        for (auto it=m_List2SN.begin(); it != m_List2SN.end(); ++it)
         {
-            for (it1=it->second.begin(); it1!=it->second.end(); ++it1)
+            for (auto it1=it->second.begin(); it1!=it->second.end(); ++it1)
             {
                 if (it1->second.size() > 1)
                 {
                     group.iGroupId  = gid;
                     ListView_InsertGroup(g_hList, -1, &group);
 
-                    for (it2=it1->second.begin(); it2!=it1->second.end(); ++it2)
+                    for (auto it2=it1->second.begin(); it2!=it1->second.end(); ++it2)
                         InsertListViewItem(&(*it2), gid);
 
                     ++gid;
@@ -885,8 +876,8 @@ int FileGroupSN::StoreMatchedFile(const std::wstring & path, const PWIN32_FIND_D
     fi.CreationTime   = pwfd->ftCreationTime;
     fi.LastWriteTime  = pwfd->ftLastWriteTime;
 
-    std::multimap<ULONG64, std::map<std::wstring, std::vector<FileInfo>>>::iterator it;
-    std::map<std::wstring, std::vector<FileInfo>>::iterator it1;
+    std::multimap<ULONG64, std::map<DWORD, std::vector<FileInfo>>>::iterator it;
+    std::map<DWORD, std::vector<FileInfo>>::iterator it1;
 
     switch (m_Filter.Switch[m_Filter.Compare_FileName])
     {
@@ -898,15 +889,14 @@ int FileGroupSN::StoreMatchedFile(const std::wstring & path, const PWIN32_FIND_D
             {
                 name = name.substr(0, pos);
             }
-                    
-            std::pair<std::multimap<ULONG64, std::map<std::wstring, std::vector<FileInfo>>>::iterator,
-                std::multimap<ULONG64, std::map<std::wstring, std::vector<FileInfo>>>::iterator> range;
-            range = m_List2SN.equal_range(idx);
+            
+            DWORD crc = CRC32_4((PBYTE)name.c_str(), 0, name.size() * 2);
+            auto range = m_List2SN.equal_range(idx);
                     
             bool find = false;
             for (it=range.first; it!=range.second; ++it)
             {
-                if ((it1=it->second.find(name)) != it->second.end())
+                if ((it1=it->second.find(crc)) != it->second.end())
                 {
                     it1->second.push_back(fi);
                     find = true;
@@ -918,8 +908,8 @@ int FileGroupSN::StoreMatchedFile(const std::wstring & path, const PWIN32_FIND_D
             {
                 std::vector<FileInfo> v;
                 v.push_back(fi);
-                std::map<std::wstring, std::vector<FileInfo>> m;
-                m.insert(std::make_pair(name, v));
+                std::map<DWORD, std::vector<FileInfo>> m;
+                m.insert(std::make_pair(crc, v));
                 m_List2SN.insert(std::make_pair(idx, m));
             }
 
@@ -929,14 +919,12 @@ int FileGroupSN::StoreMatchedFile(const std::wstring & path, const PWIN32_FIND_D
     case Filter::Type_Include:
         if (name.find(m_Filter.KeyWordOfFileName) != std::wstring::npos)
         {
-            std::pair<std::multimap<ULONG64, std::map<std::wstring, std::vector<FileInfo>>>::iterator,
-                std::multimap<ULONG64, std::map<std::wstring, std::vector<FileInfo>>>::iterator> range;
-            range = m_List2SN.equal_range(idx);
+            auto range = m_List2SN.equal_range(idx);
                     
             bool find = false;
             for (it=range.first; it!=range.second; ++it)
             {
-                if ((it1=it->second.find(m_Filter.KeyWordOfFileName)) != it->second.end())
+                if ((it1=it->second.find(0)) != it->second.end())
                 {
                     it1->second.push_back(fi);
                     find = true;
@@ -948,8 +936,8 @@ int FileGroupSN::StoreMatchedFile(const std::wstring & path, const PWIN32_FIND_D
             {
                 std::vector<FileInfo> v;
                 v.push_back(fi);
-                std::map<std::wstring, std::vector<FileInfo>> m;
-                m.insert(std::make_pair(m_Filter.KeyWordOfFileName, v));
+                std::map<DWORD, std::vector<FileInfo>> m;
+                m.insert(std::make_pair(0, v));
                 m_List2SN.insert(std::make_pair(idx, m));
             }
         }
@@ -958,20 +946,23 @@ int FileGroupSN::StoreMatchedFile(const std::wstring & path, const PWIN32_FIND_D
     case Filter::Type_RangeMatch:
         try
         {
-            std::wstring part = std::wstring(name, m_Filter.FileNameRange.LowerBound - 1,
-                m_Filter.FileNameRange.UpperBound - m_Filter.FileNameRange.LowerBound + 1);
-            if (part.size() <
-                m_Filter.FileNameRange.UpperBound - m_Filter.FileNameRange.LowerBound + 1)
+            int len = m_Filter.FileNameRange.UpperBound - m_Filter.FileNameRange.LowerBound + 1;
+
+            if (len < 0
+                || name.size() < len
+                || m_Filter.FileNameRange.LowerBound < 1
+                || name.size() < m_Filter.FileNameRange.UpperBound - 1)
                 break;
 
-            std::pair<std::multimap<ULONG64, std::map<std::wstring, std::vector<FileInfo>>>::iterator,
-                std::multimap<ULONG64, std::map<std::wstring, std::vector<FileInfo>>>::iterator> range;
-            range = m_List2SN.equal_range(idx);
+            DWORD crc = CRC32_4((PBYTE)name.c_str() + m_Filter.FileNameRange.LowerBound * 2 - 2,
+                0, len * 2);
+
+            auto range = m_List2SN.equal_range(idx);
                     
             bool find = false;
             for (it=range.first; it!=range.second; ++it)
             {
-                if ((it1=it->second.find(part)) != it->second.end())
+                if ((it1=it->second.find(crc)) != it->second.end())
                 {
                     it1->second.push_back(fi);
                     find = true;
@@ -983,8 +974,8 @@ int FileGroupSN::StoreMatchedFile(const std::wstring & path, const PWIN32_FIND_D
             {
                 std::vector<FileInfo> v;
                 v.push_back(fi);
-                std::map<std::wstring, std::vector<FileInfo>> m;
-                m.insert(std::make_pair(part, v));
+                std::map<DWORD, std::vector<FileInfo>> m;
+                m.insert(std::make_pair(crc, v));
                 m_List2SN.insert(std::make_pair(idx, m));
             }
         }

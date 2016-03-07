@@ -138,7 +138,7 @@ class FileGroupN : public FileGroup
 {
 public:
     // 文件名
-    std::map<std::wstring, std::vector<FileInfo>> m_List1N;
+    std::map<DWORD, std::vector<FileInfo>> m_List1N;    // 以文件名的crc来做索引
 
     int     HashFiles        ();
     int     ExportData       ();
@@ -150,7 +150,7 @@ class FileGroupSN : public FileGroup
 {
 public:
     // 大小 + 文件名 / 大小 + 日期 + 文件名 / 日期 + 文件名
-    std::multimap<ULONG64, std::map<std::wstring, std::vector<FileInfo>>> m_List2SN;
+    std::multimap<ULONG64, std::map<DWORD, std::vector<FileInfo>>> m_List2SN;
 
     int     HashFiles        ();
     int     ExportData       ();

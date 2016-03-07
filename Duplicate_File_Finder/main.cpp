@@ -177,8 +177,6 @@ static bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
         return TRUE;
 
     case IDB_PAUSE:
-        //SetDlgItemText(hDlg, IDB_PAUSE, L"¼ÌÐø(&R)");
-        //SetWindowLong(GetDlgItem(hDlg, IDB_PAUSE), GWL_ID, IDB_RESUME);
         if (!bPause)
         {
             SuspendThread(g_hThread);
