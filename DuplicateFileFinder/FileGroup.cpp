@@ -3,9 +3,12 @@
 #include "FileGroup.h"
 #include "crc32.h"
 #include <CommCtrl.h>
+#include <memory>
 
+extern std::vector<std::pair<std::shared_ptr<FileGroup::FileInfo>, std::wstring>> g_DataBase;
 extern HWND g_hStatus, g_hList;
 extern volatile bool bTerminateThread;
+
 extern void UpdateStatusBar(int part, const wchar_t *text);
 extern void InsertListViewItem(FileGroup::pFileInfo pfi, int groupid, std::wstring* phash = 0);
 
@@ -66,16 +69,15 @@ int FileGroup::StoreMatchedFile(const std::wstring& path, const PWIN32_FIND_DATA
     if (m_Filter.Switch[Filter::Compare_FileDate])
         idx += pMakeSimpleTime(&st);
     
-    std::wstring name(pwfd->cFileName);
-    FileInfo fi;
-    fi.Name = std::wstring(name);
-    fi.Path = std::wstring(path);
-    fi.Size = size;
-    fi.CreationTime   = pwfd->ftCreationTime;
-    fi.LastWriteTime  = pwfd->ftLastWriteTime;
+    auto pfi = std::shared_ptr<FileInfo>(new FileInfo);
+    pfi->Name.assign(pwfd->cFileName);
+    pfi->Path.assign(path);
+    pfi->Size = size;
+    pfi->CreationTime   = pwfd->ftCreationTime;
+    pfi->LastWriteTime  = pwfd->ftLastWriteTime;
 
 
-    m_List0.push_back(fi);
+    m_List0.push_back(pfi);
 
     return 0;
 }
@@ -109,27 +111,14 @@ ULONG64 FileGroup::pMakeSimpleTime(PSYSTEMTIME pst)
 
 int FileGroup::ExportHashData()
 {
-    LVGROUP group;
-
-    int gid         = 1;
-    group.cbSize    = sizeof(LVGROUP);
-    group.mask      = /*LVGF_HEADER | */LVGF_GROUPID;
-
-    for (auto it=m_List1H.begin(); it != m_List1H.end(); ++it)
+    for (auto it1 = m_List1H.begin(); it1 != m_List1H.end(); ++it1)
     {
-        if (it->second.size() > 1)
+        if (it1->second.size() > 1)
         {
-            group.iGroupId  = gid;
-            ListView_InsertGroup(g_hList, -1, &group);
-            
-            if (!bTerminate)
+            for (auto it2 = it1->second.begin(); it2 != it1->second.end(); ++it2)
             {
-                for (auto it1=it->second.begin(); it1!=it->second.end(); ++it1)
-                    InsertListViewItem(*it1, gid, const_cast<std::wstring*>(&it->first));
+                g_DataBase.push_back(std::make_pair(*it2, it1->first));
             }
-            else for (auto it1=it->second.begin(); !(*bTerminate) && it1!=it->second.end(); ++it1)
-                    InsertListViewItem(*it1, gid, const_cast<std::wstring*>(&it->first));
-            ++gid;
         }
     }
 
@@ -138,35 +127,17 @@ int FileGroup::ExportHashData()
 
 int FileGroup::ExportData()
 {
-    LVGROUP group;
-
-    int gid         = 1;
-    group.cbSize    = sizeof(LVGROUP);
-    group.mask      = /*LVGF_HEADER | */LVGF_GROUPID;
-    
-
     if (m_Filter.Switch[Filter::Compare_FileHash] != Filter::Type_Off)
     {
         ExportHashData();
     }
     else
     {
-        group.iGroupId  = gid;
-        ListView_InsertGroup(g_hList, -1, &group);
-
-        if (!bTerminate)
+        for (auto it1 = m_List0.begin(); it1 != m_List0.end(); ++it1)
         {
-            for (auto it=m_List0.begin(); it != m_List0.end(); ++it)
-            {
-                InsertListViewItem(&(*it), gid);
-            }
+            g_DataBase.push_back(std::make_pair(*it1, std::wstring()));
         }
-        else for (auto it=m_List0.begin(); !(*bTerminate) && it!=m_List0.end(); ++it)
-            {
-                InsertListViewItem(&(*it), gid);
-            }
     }
-
     return 0;
 }
 
@@ -230,16 +201,16 @@ int FileGroup::HashFiles()
 {
     for (auto it=m_List0.begin(); it!=m_List0.end(); ++it)
     {
-        std::wstring str, tmp(it->Path);
-        (tmp += L'\\') += it->Name;
+        std::wstring str, tmp((*it)->Path);
+        (tmp += L'\\') += (*it)->Name;
 
-        int ret = PerformHash(tmp, str, it->Size);
+        int ret = PerformHash(tmp, str, (*it)->Size);
         if (ret == SHA_1::S_TERMINATED)
             return 1;
         else if (ret != SHA_1::S_NO_ERR)
             continue;
 
-        m_List1H[str].push_back(&(*it));
+        m_List1H[str].push_back(*it);
     }
 
     return 0;
@@ -431,6 +402,8 @@ int FileGroup::StartSearchFiles()
     m_List0.clear();
     m_List1H.clear();
 
+    g_DataBase.clear();
+
     // 设置状态栏
     UpdateStatusBar(0, L"查找文件...");
 
@@ -459,6 +432,8 @@ int FileGroup::StartSearchFiles()
         UpdateStatusBar(0, L"正在生成列表");
 
         ExportData();
+
+        ListView_SetItemCount(g_hList, g_DataBase.size());
 
     } while(0);
 
@@ -480,16 +455,16 @@ int FileGroupS::HashFiles()
         {
             for (auto it1=it->second.begin(); it1!=it->second.end(); ++it1)
             {
-                std::wstring str, tmp(it1->Path);
-                (tmp += L'\\') += it1->Name;
+                std::wstring str, tmp((*it1)->Path);
+                (tmp += L'\\') += (*it1)->Name;
 
-                int ret = PerformHash(tmp, str, it1->Size);
+                int ret = PerformHash(tmp, str, (*it1)->Size);
                 if (ret == SHA_1::S_TERMINATED)
                     return 1;
                 else if (ret != SHA_1::S_NO_ERR)
                     continue;
 
-                m_List1H[str].push_back(&(*it1));
+                m_List1H[str].push_back(*it1);
             }
         }
 
@@ -498,35 +473,20 @@ int FileGroupS::HashFiles()
 
 int FileGroupS::ExportData()
 {
-    LVGROUP group;
-
-    int gid         = 1;
-    group.cbSize    = sizeof(LVGROUP);
-    group.mask      = /*LVGF_HEADER | */LVGF_GROUPID;
-    
-
     if (m_Filter.Switch[Filter::Compare_FileHash] != Filter::Type_Off)
     {
         ExportHashData();
     }
     else
     {
-        for (auto it=m_List1S.begin(); it != m_List1S.end(); ++it)
+        for (auto it1 = m_List1S.begin(); it1 != m_List1S.end(); ++it1)
         {
-            if (it->second.size() > 1)
+            if (it1->second.size() > 1)
             {
-                group.iGroupId  = gid;
-                ListView_InsertGroup(g_hList, -1, &group);
-
-                if (!bTerminate)
+                for (auto it2 = it1->second.begin(); it2 != it1->second.end(); ++it2)
                 {
-                    for (auto it1=it->second.begin(); it1!=it->second.end(); ++it1)
-                        InsertListViewItem(&(*it1), gid);
+                    g_DataBase.push_back(std::make_pair(*it2, std::wstring()));
                 }
-                else for (auto it1=it->second.begin(); !(*bTerminate) && it1!=it->second.end(); ++it1)
-                        InsertListViewItem(&(*it1), gid);
-
-                ++gid;
             }
         }
     }
@@ -546,15 +506,14 @@ int FileGroupS::StoreMatchedFile(const std::wstring & path, const PWIN32_FIND_DA
     if (m_Filter.Switch[Filter::Compare_FileDate])
         idx += pMakeSimpleTime(&st);
     
-    std::wstring name(pwfd->cFileName);
-    FileInfo fi;
-    fi.Name = std::wstring(name);
-    fi.Path = std::wstring(path);
-    fi.Size = size;
-    fi.CreationTime   = pwfd->ftCreationTime;
-    fi.LastWriteTime  = pwfd->ftLastWriteTime;
+    auto pfi = std::shared_ptr<FileInfo>(new FileInfo);
+    pfi->Name.assign(pwfd->cFileName);
+    pfi->Path.assign(path);
+    pfi->Size = size;
+    pfi->CreationTime   = pwfd->ftCreationTime;
+    pfi->LastWriteTime  = pwfd->ftLastWriteTime;
 
-    m_List1S[idx].push_back(fi);
+    m_List1S[idx].push_back(pfi);
 
     return 0;
 }
@@ -563,6 +522,8 @@ int FileGroupS::StartSearchFiles()
 {
     m_List1S.clear();
     m_List1H.clear();
+
+    g_DataBase.clear();
 
     // 设置状态栏
     UpdateStatusBar(0, L"查找文件...");
@@ -592,6 +553,8 @@ int FileGroupS::StartSearchFiles()
         UpdateStatusBar(0, L"正在生成列表");
 
         ExportData();
+
+        ListView_SetItemCount(g_hList, g_DataBase.size());
     
     } while (0);
 
@@ -613,16 +576,16 @@ int FileGroupN::HashFiles()
         {
             for (auto it1=it->second.begin(); it1!=it->second.end(); ++it1)
             {
-                std::wstring str, tmp(it1->Path);
-                (tmp += L'\\') += it1->Name;
+                std::wstring str, tmp((*it1)->Path);
+                (tmp += L'\\') += (*it1)->Name;
 
-                int ret = PerformHash(tmp, str, it1->Size);
+                int ret = PerformHash(tmp, str, (*it1)->Size);
                 if (ret == SHA_1 ::S_TERMINATED)
                     return 1;
                 else if (ret != SHA_1::S_NO_ERR)
                     continue;
 
-                m_List1H[str].push_back(&(*it1));
+                m_List1H[str].push_back(*it1);
             }
         }
     return 0;
@@ -630,34 +593,20 @@ int FileGroupN::HashFiles()
 
 int FileGroupN::ExportData()
 {
-    LVGROUP group;
-
-    int gid         = 1;
-    group.cbSize    = sizeof(LVGROUP);
-    group.mask      = /*LVGF_HEADER | */LVGF_GROUPID;
-    
-
     if (m_Filter.Switch[Filter::Compare_FileHash] != Filter::Type_Off)
     {
         ExportHashData();
     }
     else
     {
-        for (auto it=m_List1N.begin(); it!=m_List1N.end(); ++it)
+        for (auto it1 = m_List1N.begin(); it1 != m_List1N.end(); ++it1)
         {
-            if (it->second.size() > 1)
+            if (it1->second.size() > 1)
             {
-                group.iGroupId  = gid;
-                ListView_InsertGroup(g_hList, -1, &group);
-                if (!bTerminate)
+                for (auto it2 = it1->second.begin(); it2 != it1->second.end(); ++it2)
                 {
-                    for (auto it1=it->second.begin(); it1!=it->second.end(); ++it1)
-                        InsertListViewItem(&(*it1), gid);
+                    g_DataBase.push_back(std::make_pair(*it2, std::wstring()));
                 }
-                else for (auto it1=it->second.begin(); !(*bTerminate) && it1!=it->second.end(); ++it1)
-                        InsertListViewItem(&(*it1), gid);
-                    
-                ++gid;
             }
         }
     }
@@ -678,12 +627,12 @@ int FileGroupN::StoreMatchedFile(const std::wstring & path, const PWIN32_FIND_DA
         idx += pMakeSimpleTime(&st);
     
     std::wstring name(pwfd->cFileName);
-    FileInfo fi;
-    fi.Name = std::wstring(name);
-    fi.Path = std::wstring(path);
-    fi.Size = size;
-    fi.CreationTime   = pwfd->ftCreationTime;
-    fi.LastWriteTime  = pwfd->ftLastWriteTime;
+    auto pfi = std::shared_ptr<FileInfo>(new FileInfo);
+    pfi->Name.assign(pwfd->cFileName);
+    pfi->Path.assign(path);
+    pfi->Size = size;
+    pfi->CreationTime   = pwfd->ftCreationTime;
+    pfi->LastWriteTime  = pwfd->ftLastWriteTime;
 
     std::map<DWORD, std::vector<FileInfo>>::iterator it;
     std::vector<FileInfo>::iterator it1;
@@ -701,7 +650,7 @@ int FileGroupN::StoreMatchedFile(const std::wstring & path, const PWIN32_FIND_DA
 
             DWORD crc = CRC32_4((PBYTE)name.c_str(), 0, name.size() * 2);
 
-            m_List1N[crc].push_back(fi);
+            m_List1N[crc].push_back(pfi);
         }
         break;
 
@@ -709,28 +658,23 @@ int FileGroupN::StoreMatchedFile(const std::wstring & path, const PWIN32_FIND_DA
         if (name.find(m_Filter.KeyWordOfFileName) != std::wstring::npos)
         {
             // 这里 map 只有一对键值<keyname - vector>
-            m_List1N[0].push_back(fi);
+            m_List1N[0].push_back(pfi);
         }
         break;
 
     case Filter::Type_RangeMatch:
-        try
-        {
-            int len = m_Filter.FileNameRange.UpperBound - m_Filter.FileNameRange.LowerBound + 1;
+        int len = m_Filter.FileNameRange.UpperBound - m_Filter.FileNameRange.LowerBound + 1;
 
-            if (len < 0
-                || name.size() < len
-                || m_Filter.FileNameRange.LowerBound < 1
-                || name.size() < m_Filter.FileNameRange.UpperBound - 1)
-                break;
+        if (len < 0
+            || name.size() < len
+            || m_Filter.FileNameRange.LowerBound < 1
+            || name.size() < m_Filter.FileNameRange.UpperBound - 1)
+            break;
 
-            DWORD crc = CRC32_4((PBYTE)name.c_str() + m_Filter.FileNameRange.LowerBound * 2 - 2,
-                0, len * 2);
+        DWORD crc = CRC32_4((PBYTE)name.c_str() + m_Filter.FileNameRange.LowerBound * 2 - 2,
+            0, len * 2);
 
-            m_List1N[crc].push_back(fi);
-        }
-        catch (...) { }
-
+        m_List1N[crc].push_back(pfi);
 
         break;
     }
@@ -742,6 +686,8 @@ int FileGroupN::StartSearchFiles()
 {
     m_List1N.clear();
     m_List1H.clear();
+
+    g_DataBase.clear();
 
     // 设置状态栏
     UpdateStatusBar(0, L"查找文件...");
@@ -772,6 +718,8 @@ int FileGroupN::StartSearchFiles()
         UpdateStatusBar(0, L"正在生成列表");
 
         ExportData();
+
+        ListView_SetItemCount(g_hList, g_DataBase.size());
 
     } while (0);
 
@@ -799,16 +747,16 @@ int FileGroupSN::HashFiles()
             {
                 for (auto it2=it1->second.begin(); it2!=it1->second.end(); ++it2)
                 {
-                    std::wstring str, tmp(it2->Path);
-                    (tmp += L'\\') += it2->Name;
+                    std::wstring str, tmp((*it2)->Path);
+                    (tmp += L'\\') += (*it2)->Name;
 
-                    int ret = PerformHash(tmp, str, it2->Size);
+                    int ret = PerformHash(tmp, str, (*it2)->Size);
                     if (ret == SHA_1::S_TERMINATED)
                         return 1;
                     else if (ret != SHA_1::S_NO_ERR)
                         continue;
 
-                    m_List1H[str].push_back(&*(it2));
+                    m_List1H[str].push_back(*it2);
                 }
             }
         }
@@ -818,37 +766,20 @@ int FileGroupSN::HashFiles()
 
 int FileGroupSN::ExportData()
 {
-    LVGROUP group;
-
-    int gid         = 1;
-    group.cbSize    = sizeof(LVGROUP);
-    group.mask      = /*LVGF_HEADER | */LVGF_GROUPID;
-    
-
     if (m_Filter.Switch[Filter::Compare_FileHash] != Filter::Type_Off)
     {
         ExportHashData();
     }
     else
     {
-        for (auto it=m_List2SN.begin(); it != m_List2SN.end(); ++it)
+        for (auto it1 = m_List2SN.begin(); it1 != m_List2SN.end(); ++it1)
         {
-            for (auto it1=it->second.begin(); it1!=it->second.end(); ++it1)
+            for (auto it2 = it1->second.begin(); it2 != it1->second.end(); ++it2)
             {
-                if (it1->second.size() > 1)
+                if (it2->second.size() > 1) 
                 {
-                    group.iGroupId  = gid;
-                    ListView_InsertGroup(g_hList, -1, &group);
-
-                    if (!bTerminate)
-                    {
-                        for (auto it2=it1->second.begin(); it2!=it1->second.end(); ++it2)
-                            InsertListViewItem(&(*it2), gid);
-                    }
-                    else for (auto it2=it1->second.begin(); !(*bTerminate) && it2!=it1->second.end(); ++it2)
-                            InsertListViewItem(&(*it2), gid);
-
-                    ++gid;
+                    for (auto it3 = it2->second.begin(); it3 != it2->second.end(); ++it3)
+                        g_DataBase.push_back(std::make_pair(*it3, std::wstring()));
                 }
             }
         }
@@ -870,15 +801,15 @@ int FileGroupSN::StoreMatchedFile(const std::wstring & path, const PWIN32_FIND_D
         idx += pMakeSimpleTime(&st);
     
     std::wstring name(pwfd->cFileName);
-    FileInfo fi;
-    fi.Name = std::wstring(name);
-    fi.Path = std::wstring(path);
-    fi.Size = size;
-    fi.CreationTime   = pwfd->ftCreationTime;
-    fi.LastWriteTime  = pwfd->ftLastWriteTime;
+    auto pfi = std::shared_ptr<FileInfo>(new FileInfo);
+    pfi->Name.assign(name);
+    pfi->Path.assign(path);
+    pfi->Size = size;
+    pfi->CreationTime   = pwfd->ftCreationTime;
+    pfi->LastWriteTime  = pwfd->ftLastWriteTime;
 
-    std::multimap<ULONG64, std::map<DWORD, std::vector<FileInfo>>>::iterator it;
-    std::map<DWORD, std::vector<FileInfo>>::iterator it1;
+    std::multimap<ULONG64, std::map<DWORD, std::vector<std::shared_ptr<FileInfo>>>>::iterator it;
+    std::map<DWORD, std::vector<std::shared_ptr<FileInfo>>>::iterator it1;
 
     switch (m_Filter.Switch[m_Filter.Compare_FileName])
     {
@@ -899,7 +830,7 @@ int FileGroupSN::StoreMatchedFile(const std::wstring & path, const PWIN32_FIND_D
             {
                 if ((it1=it->second.find(crc)) != it->second.end())
                 {
-                    it1->second.push_back(fi);
+                    it1->second.push_back(pfi);
                     find = true;
                     break;
                 }
@@ -907,9 +838,9 @@ int FileGroupSN::StoreMatchedFile(const std::wstring & path, const PWIN32_FIND_D
                     
             if (!find)
             {
-                std::vector<FileInfo> v;
-                v.push_back(fi);
-                std::map<DWORD, std::vector<FileInfo>> m;
+                std::vector<std::shared_ptr<FileInfo>> v;
+                v.push_back(pfi);
+                std::map<DWORD, std::vector<std::shared_ptr<FileInfo>>> m;
                 m.insert(std::make_pair(crc, v));
                 m_List2SN.insert(std::make_pair(idx, m));
             }
@@ -927,7 +858,7 @@ int FileGroupSN::StoreMatchedFile(const std::wstring & path, const PWIN32_FIND_D
             {
                 if ((it1=it->second.find(0)) != it->second.end())
                 {
-                    it1->second.push_back(fi);
+                    it1->second.push_back(pfi);
                     find = true;
                     break;
                 }
@@ -935,9 +866,9 @@ int FileGroupSN::StoreMatchedFile(const std::wstring & path, const PWIN32_FIND_D
                     
             if (!find)
             {
-                std::vector<FileInfo> v;
-                v.push_back(fi);
-                std::map<DWORD, std::vector<FileInfo>> m;
+                std::vector<std::shared_ptr<FileInfo>> v;
+                v.push_back(pfi);
+                std::map<DWORD, std::vector<std::shared_ptr<FileInfo>>> m;
                 m.insert(std::make_pair(0, v));
                 m_List2SN.insert(std::make_pair(idx, m));
             }
@@ -965,7 +896,7 @@ int FileGroupSN::StoreMatchedFile(const std::wstring & path, const PWIN32_FIND_D
             {
                 if ((it1=it->second.find(crc)) != it->second.end())
                 {
-                    it1->second.push_back(fi);
+                    it1->second.push_back(pfi);
                     find = true;
                     break;
                 }
@@ -973,9 +904,9 @@ int FileGroupSN::StoreMatchedFile(const std::wstring & path, const PWIN32_FIND_D
                     
             if (!find)
             {
-                std::vector<FileInfo> v;
-                v.push_back(fi);
-                std::map<DWORD, std::vector<FileInfo>> m;
+                std::vector<std::shared_ptr<FileInfo>> v;
+                v.push_back(pfi);
+                std::map<DWORD, std::vector<std::shared_ptr<FileInfo>>> m;
                 m.insert(std::make_pair(crc, v));
                 m_List2SN.insert(std::make_pair(idx, m));
             }
@@ -992,6 +923,8 @@ int FileGroupSN::StartSearchFiles()
 {
     m_List2SN.clear();
     m_List1H.clear();
+
+    g_DataBase.clear();
 
     // 设置状态栏
     UpdateStatusBar(0, L"查找文件...");
@@ -1022,6 +955,8 @@ int FileGroupSN::StartSearchFiles()
         UpdateStatusBar(0, L"正在生成列表");
 
         ExportData();
+
+        ListView_SetItemCount(g_hList, g_DataBase.size());
     
     } while(0);
 

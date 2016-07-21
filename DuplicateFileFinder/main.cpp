@@ -128,24 +128,24 @@ static bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
 {
     static bool bPause = false;
     static TCHAR staticBuf[MAX_PATH];
-    TCHAR szBuffer[MAX_PATH], szBuffer1[MAX_PATH];
+    wchar_t szBuffer[MAX_PATH1], szBuffer1[MAX_PATH1];
 
     switch (id)
     {
     case IDM_OPENFILE:
     case IDM_DELETE:	
         // 获取全路径
-        ListView_GetItemText(g_hList, iClickItem, 1, szBuffer, MAX_PATH1);
-        StringCbCat(szBuffer, MAX_PATH1, TEXT("\\"));
-        ListView_GetItemText(g_hList, iClickItem, 0, szBuffer1, MAX_PATH1);
-        StringCbCat(szBuffer, MAX_PATH1, szBuffer1);
+        ListView_GetItemText(g_hList, iClickItem, 1, szBuffer, _countof(szBuffer));
+        StringCbCat(szBuffer, _countof(szBuffer), TEXT("\\"));
+        ListView_GetItemText(g_hList, iClickItem, 0, szBuffer1, _countof(szBuffer1));
+        StringCbCat(szBuffer, _countof(szBuffer), szBuffer1);
 
         if (id == IDM_OPENFILE)
             ShellExecute(0, 0, szBuffer, NULL, NULL, SW_SHOW);
         else
         {
-            StringCbCopy(szBuffer1, MAX_PATH1, TEXT("确认删除"));
-            StringCbCat(szBuffer1, MAX_PATH1, szBuffer);
+            StringCbCopy(szBuffer1, _countof(szBuffer1), TEXT("确认删除"));
+            StringCbCat(szBuffer1, _countof(szBuffer1), szBuffer);
             if (IDNO == MessageBox(hDlg, szBuffer1, TEXT("提示"),
                 MB_YESNO | MB_DEFBUTTON2 | MB_ICONWARNING))
                 return TRUE;
@@ -161,7 +161,7 @@ static bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
         return TRUE;
 
     case IDM_EXPLORER:
-        ListView_GetItemText(g_hList, iClickItem, 1, szBuffer, MAX_PATH1);
+        ListView_GetItemText(g_hList, iClickItem, 1, szBuffer, _countof(szBuffer));
         ShellExecute(0, 0, szBuffer, 0, 0, SW_SHOW);
         return TRUE;
 
@@ -173,23 +173,23 @@ static bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
         for (int i=ListView_GetItemCount(g_hList)-1; i>=0; --i)
             if (ListView_GetCheckState(g_hList, i) == TRUE)
             {
-                ListView_GetItemText(g_hList, i, 1, szBuffer, MAX_PATH1);
-                StringCbCat(szBuffer, MAX_PATH1, TEXT("\\"));
-                ListView_GetItemText(g_hList, i, 0, szBuffer1, MAX_PATH1);
-                StringCbCat(szBuffer, MAX_PATH1, szBuffer1);
+                ListView_GetItemText(g_hList, i, 1, szBuffer, _countof(szBuffer));
+                StringCbCat(szBuffer, _countof(szBuffer), TEXT("\\"));
+                ListView_GetItemText(g_hList, i, 0, szBuffer1, _countof(szBuffer1));
+                StringCbCat(szBuffer, _countof(szBuffer), szBuffer1);
                 DeleteFile(szBuffer);
                 if (!GetLastError())
                     ListView_DeleteItem(g_hList, i);
                 else
                 {
-                    StringCbPrintf(szBuffer1, MAX_PATH1, TEXT("无法删除文件%s，请手动删除"), szBuffer);
+                    StringCbPrintf(szBuffer1, _countof(szBuffer1), TEXT("无法删除文件%s，请手动删除"), szBuffer);
                     SendMessage(g_hStatus, SB_SETTEXT, 0, (LPARAM)szBuffer1);
                 }
             }
         return TRUE;
 
     case IDM_REMOVE:
-        StringCbPrintf(szBuffer, MAX_PATH1, TEXT("已移除%d项"), DelDifferentHash(g_hList));
+        StringCbPrintf(szBuffer, _countof(szBuffer), TEXT("已移除%d项"), DelDifferentHash(g_hList));
         SendMessage(g_hStatus, SB_SETTEXT, 0, (LPARAM)szBuffer);
         UpdateStatusBar(1, 0);
         return TRUE;
@@ -276,7 +276,7 @@ static bool Cls_OnCreate(HWND hDlg, LPCREATESTRUCT lpCreateStruct)
 
     // 初始化List View    大小在这里微调……
     g_hList = CreateWindowEx(0, WC_LISTVIEW, NULL,
-                    LVS_REPORT | WS_CHILD | WS_VISIBLE | WS_BORDER | LVS_ALIGNTOP,
+                    LVS_REPORT | WS_CHILD | WS_VISIBLE | WS_BORDER | LVS_ALIGNTOP | LVS_OWNERDATA,
                     0, 0, ClientWndSize.x-6, ClientWndSize.y-StatusBarHigh-61,
                     hDlg, (HMENU)ID_LISTVIEW, (HINSTANCE)GetWindowLong(hDlg, GWL_HINSTANCE), NULL);
     ListView_EnableGroupView(g_hList, TRUE);
@@ -373,6 +373,76 @@ LRESULT CALLBACK MainWndProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam)
                     TrackPopupMenu(g_hMenu, TPM_RIGHTBUTTON, lvh.pt.x, lvh.pt.y, 0, hDlg, NULL);
                 }
                 break;
+            case LVN_GETDISPINFO:
+            {
+                NMLVDISPINFO *pdi = reinterpret_cast<NMLVDISPINFO*>(lParam);
+                LVITEMW *pItem = &pdi->item;
+                int itemid = pItem->iItem;
+                FileGroup::pFileInfo pfi = g_DataBase[itemid].first.get();
+                if (pItem->mask & LVIF_TEXT)
+                {
+                    SYSTEMTIME st;
+                    FILETIME ft;
+                    TCHAR Buffer[128] = { 0 };
+
+                    switch (pItem->iSubItem)
+                    {
+                    case 0: // name
+                        wcscpy_s(pItem->pszText,
+                            pItem->cchTextMax,
+                            pfi->Name.c_str()
+                            );
+                        break;
+
+                    case 1: // path
+                        wcscpy_s(pItem->pszText,
+                            pItem->cchTextMax,
+                            pfi->Path.c_str()
+                            );
+                        break;
+
+                    case 2: // size
+                        if (pfi->Size > 966367641)		// 约为0.9GB
+                            StringCbPrintf(Buffer, 120, TEXT("%.2lf GB"), pfi->Size / (double)0x40000000);
+                        else if (pfi->Size > 943718)	// 0.9MB
+                            StringCbPrintf(Buffer, 120, TEXT("%.2lf MB"), pfi->Size / (double)0x100000);
+                        else if (pfi->Size > 921)        // 0.9KB
+                            StringCbPrintf(Buffer, 120, TEXT("%.2lf KB"), pfi->Size / (double)0x400);
+                        else
+                            StringCbPrintf(Buffer, 120, TEXT("%d B"), pfi->Size);
+
+                        wcscpy_s(pItem->pszText, pItem->cchTextMax, Buffer);
+                        break;
+
+                    case 3: // create time
+                        FileTimeToLocalFileTime(&pfi->CreationTime, &ft);
+                        FileTimeToSystemTime(&ft, &st);
+                        StringCbPrintf(Buffer, 120, TEXT("%04d/%02d/%02d %02d:%02d:%02d"),
+                            st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
+
+                        wcscpy_s(pItem->pszText, pItem->cchTextMax, Buffer);
+                        break;
+
+                    case 4: // last write time
+                        FileTimeToLocalFileTime(&pfi->LastWriteTime, &ft);
+                        FileTimeToSystemTime(&ft, &st);
+                        StringCbPrintf(Buffer, 120, TEXT("%04d/%02d/%02d %02d:%02d:%02d"),
+                            st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
+
+                        wcscpy_s(pItem->pszText, pItem->cchTextMax, Buffer);
+                        break;
+
+                    case 5: // hash
+                        wcscpy_s(pItem->pszText,
+                            pItem->cchTextMax,
+                            g_DataBase[itemid].second.c_str()
+                            );
+                        break;
+
+                    default: break;
+                    }
+                }
+            }
             }
         }
         break;
@@ -536,6 +606,8 @@ BOOL CALLBACK FilterDialogProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam
         HANDLE_MSG(hDlg, WM_CLOSE,		 Cls_OnClose);
         HANDLE_MSG(hDlg, WM_SYSCOMMAND,	 Cls_OnSysCommand);
         HANDLE_MSG(hDlg, WM_INITDIALOG,  Cls_OnInitDialog_filter);
+
+        return TRUE;
     }
 
     return FALSE;

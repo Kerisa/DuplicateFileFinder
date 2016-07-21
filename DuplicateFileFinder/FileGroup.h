@@ -99,10 +99,10 @@ public:
     FileInfo, *pFileInfo;
 
     // 列出所有文件
-    std::vector<FileInfo>                                   m_List0;
+    std::vector<std::shared_ptr<FileInfo>>                         m_List0;
 
     // 哈希 - 对以上结果使用哈希 (勾上哈希时同时勾上“大小”)
-    std::map<std::wstring, std::vector<pFileInfo>>          m_List1H;
+    std::map<std::wstring, std::vector<std::shared_ptr<FileInfo>>> m_List1H;
     
 public:
     Filter m_Filter;
@@ -127,7 +127,7 @@ class FileGroupS : public FileGroup
 {
 public:
     // 大小 / 日期 / 大小 + 日期
-    std::map<ULONG64, std::vector<FileInfo>> m_List1S;
+    std::map<ULONG64, std::vector<std::shared_ptr<FileInfo>>> m_List1S;
     FileGroupS() : FileGroup() { m_List1S.clear(); }
     int     HashFiles        ();
     int     ExportData       ();
@@ -139,7 +139,7 @@ class FileGroupN : public FileGroup
 {
 public:
     // 文件名
-    std::map<DWORD, std::vector<FileInfo>> m_List1N;    // 以文件名的crc来做索引
+    std::map<DWORD, std::vector<std::shared_ptr<FileInfo>>> m_List1N;    // 以文件名的crc来做索引
 
     int     HashFiles        ();
     int     ExportData       ();
@@ -150,8 +150,8 @@ public:
 class FileGroupSN : public FileGroup
 {
 public:
-    // 大小 + 文件名 / 大小 + 日期 + 文件名 / 日期 + 文件名
-    std::multimap<ULONG64, std::map<DWORD, std::vector<FileInfo>>> m_List2SN;
+    // (大小 + 文件名) / (大小 + 日期 + 文件名) / (日期 + 文件名)
+    std::multimap<ULONG64, std::map<DWORD, std::vector<std::shared_ptr<FileInfo>>>> m_List2SN;
 
     int     HashFiles        ();
     int     ExportData       ();

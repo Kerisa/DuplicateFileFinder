@@ -12,6 +12,10 @@ extern FileGroupN  g_FileGroupN;
 extern FileGroupSN g_FileGroupSN;
 
 
+std::vector<std::pair<std::shared_ptr<FileGroup::FileInfo>, std::wstring>> g_DataBase;
+
+
+
 void UpdateStatusBar(int part, const wchar_t *text)
 {
     wchar_t szBuffer[64];
@@ -250,7 +254,7 @@ void pInsertListViewItem(HWND g_hList, FileGroup::pFileInfo pfi, std::wstring* p
 
 void InsertListViewItem(FileGroup::pFileInfo pfi, int groupid, std::wstring* phash)
 {
-    pInsertListViewItem(g_hList, pfi, phash, groupid, 0);
+    //pInsertListViewItem(g_hList, pfi, phash, groupid, 0);
 }
 
 
