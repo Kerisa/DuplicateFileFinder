@@ -54,13 +54,17 @@ int SHA_1::ToHexString(PBYTE in, wchar_t *out, int cb)		// _itow_s显示0有点问题
         return -1;
 
     out[0] = '\0';
-        
+    
+    bool allZero = true;
     for (int i=0; i<SHA1_HASH_SIZE; ++i)
     {
-
+        allZero &= !in[i];
         StringCchPrintf(szBuffer, 4, L"%02X", in[i]);
         wcscat_s(out, cb/2, szBuffer);
     }
+
+    if (allZero)    // 屏蔽无效值
+        *out = 0;
 
     return 0;
 }
@@ -236,7 +240,7 @@ void SHA_1::Sha1ProcessFinal(PSHA1INFO psi, PBYTE pBuffer, PBYTE pResult)
 int SHA_1::CalculateSha1(wchar_t *szFileName, CallBack callback)
 {
     HANDLE		hFile;
-    BYTE		pbResultTmp[20];//, pbHashBuffer[SHA1_READ_BYTES+10];
+    BYTE		pbResultTmp[SHA1_HASH_SIZE];//, pbHashBuffer[SHA1_READ_BYTES+10];
     DWORD		dwBytesRead;
     int			iLoop, cnt = 0, ret = 0;
     bool        Continue = true;
@@ -311,6 +315,7 @@ int SHA_1::CalculateSha1(wchar_t *szFileName, CallBack callback)
         if (Continue)
         {
             ret = S_NO_ERR;
+            memcpy(m_HexResult, pbResultTmp, SHA1_HASH_SIZE);
             ToHexString(pbResultTmp, m_Result, sizeof(m_Result)-2);
         }
         else

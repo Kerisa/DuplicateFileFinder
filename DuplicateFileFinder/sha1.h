@@ -8,10 +8,15 @@
 
 class SHA_1
 {
+public:
+    enum {
+        SHA1_HASH_SIZE = 20,
+    };
+
+private:
     enum {
         ZEN_LITTLE_ENDIAN,
         SHA1_BLOCK_SIZE = 64,
-        SHA1_HASH_SIZE = 20,
         __Scale = 1024,
         SHA1_READ_BYTES = SHA1_BLOCK_SIZE * __Scale,
     };
@@ -54,9 +59,34 @@ class SHA_1
     
     bool  Sha1Init         (ULONG64 size);
     void  SwapMemCopy      (PBYTE to, PBYTE from, int len);
-    int   ToHexString      (PBYTE in, wchar_t *out, int cb);
     void  Sha1ProcessBlock (DWORD hash[5], DWORD Block[SHA1_BLOCK_SIZE / 4]);
     void  Sha1ProcessFinal (PSHA1INFO psi, PBYTE pBuffer, PBYTE pResult);
+
+public:
+    typedef struct __HashResult
+    {
+        BYTE b[SHA_1::SHA1_HASH_SIZE];
+
+        __HashResult()
+        {
+            memset(b, 0, SHA1_HASH_SIZE);
+        }
+        __HashResult(const __HashResult& pb)
+        {
+            memcpy(b, pb.b, SHA1_HASH_SIZE);
+        }
+
+        
+        bool operator<(const __HashResult& h) const
+        {
+            return memcmp(b, h.b, SHA1_HASH_SIZE) < 0;
+        }
+    } _HashResult;
+
+    int   ToHexString(PBYTE in, wchar_t *out, int cb);
+
+    BYTE m_HexResult[20];
+    wchar_t  m_Result[44];
 
 public:
     enum
@@ -69,10 +99,9 @@ public:
     };
 
     typedef bool (_cdecl *CallBack)(const long long * const length, const long long * const uplength);
-
-    wchar_t  m_Result[44];
-
+    
     int   CalculateSha1    (wchar_t *szFileName, CallBack callback);
     int   CalculateSha1    (wchar_t *szFileName, ULONG64 offset, ULONG64 len, CallBack callback);
     const wchar_t *  GetHashResult    () { return m_Result; }
+    const PBYTE GetHashResultHex () { return m_HexResult; }
 };

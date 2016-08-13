@@ -12,10 +12,6 @@ extern FileGroupN  g_FileGroupN;
 extern FileGroupSN g_FileGroupSN;
 
 
-std::vector<std::pair<std::shared_ptr<FileGroup::FileInfo>, std::wstring>> g_DataBase;
-
-
-
 void UpdateStatusBar(int part, const wchar_t *text)
 {
     wchar_t szBuffer[64];
@@ -26,9 +22,14 @@ void UpdateStatusBar(int part, const wchar_t *text)
     }
     else if (part == 1)
     {
-        StringCbPrintf(szBuffer, sizeof(szBuffer), TEXT("选中文件:%d  /  文件总数:%d"),
-            GetListViewCheckedCount(g_hList), ListView_GetItemCount(g_hList));
-        SendMessage(g_hStatus, SB_SETTEXT, 1, (LPARAM)szBuffer);
+        if (!text)
+        {
+            StringCbPrintf(szBuffer, sizeof(szBuffer), TEXT("选中文件:%d  /  文件总数:%d"),
+                GetListViewCheckedCount(g_hList), ListView_GetItemCount(g_hList));
+            SendMessage(g_hStatus, SB_SETTEXT, 1, (LPARAM)szBuffer);
+        }
+        else
+            SendMessage(g_hStatus, SB_SETTEXT, 1, (LPARAM)text);
     }
 }
 
@@ -61,12 +62,10 @@ void OpenFolder(HWND hwnd, PTSTR pReceive)
 
 int GetListViewCheckedCount(HWND g_hList)
 {
-    int i, ret = 0;
-    for (i=ListView_GetItemCount(g_hList)-1; i>=0; --i)
-    {
-        if (ListView_GetCheckState(g_hList, i))
-            ++ret;
-    }
+    int ret = 0;
+    for (auto i = g_DataBase.begin(); i != g_DataBase.end(); ++i)
+        ret += i->checkstate == CHECKBOX_SECLECTED;
+    
     return ret;
 }
 
@@ -111,150 +110,11 @@ BOOL InitListViewColumns(HWND g_hList)
     return TRUE;
 }
 
-
-//////////////////////////////////////////////////////////////////////////////////////////////
-// <DlgProc中调用>
-// 功能		- 仅保留结果列表里哈希相同的文件项
-// g_hList	- ListView句柄
-//////////////////////////////////////////////////////////////////////////////////////////////
-int DelDifferentHash(HWND g_hList)
+bool IsValidHash(int index)
 {
-    static const int BufSize = 128;
-    TCHAR szBuffer[BufSize], szBuffer1[BufSize];
-    int iItemCount, iDelCount, i, j;
-
-    iDelCount = 0;
-    iItemCount = ListView_GetItemCount(g_hList);
-
-    for (i=j=0; j<iItemCount;)
-    {
-        j = i + 1;
-        ListView_GetItemText(g_hList, i, 5, szBuffer, BufSize);
-        if (!szBuffer[0])
-        {
-            ++i;
-            continue;
-        }
-        do
-        {
-            if (j == iItemCount)		// 删除最后一个单独的文件
-                goto _DELETE;
-            ListView_GetItemText(g_hList, j, 5, szBuffer1, BufSize);
-        
-            if (!lstrcmp(szBuffer, szBuffer1))			// 大小不同哈希必然不同，因此可以删除
-                ++j;
-            else
-            {
-                if (j == i+1)
-                {
-_DELETE:			ListView_DeleteItem(g_hList, i);
-                    ++iDelCount;
-                    --j;
-                    --iItemCount;
-                }
-                else
-                    i = j;
-                break;
-            }
-        }while (j<iItemCount);
-    }
-    return iDelCount;
-}
-
-
-int SelectSameHash(HWND g_hList)
-{
-    static const int BufSize = 128;
-
-    TCHAR szBuffer[BufSize], szBuffer1[BufSize];
-    int i, iItemCount, iCheckCount;
-
-    iItemCount = ListView_GetItemCount(g_hList);
-    for (i=0; i<iItemCount; ++i)
-        ListView_SetCheckState(g_hList, i, FALSE);
-
-    for (i=0,iCheckCount=0; i<iItemCount-1;)
-    {
-        ListView_GetItemText(g_hList, i, 5, szBuffer, BufSize);
-        ListView_GetItemText(g_hList, i+1, 5, szBuffer1, BufSize);
-        if (!szBuffer[0] || !szBuffer1[0] || lstrcmp(szBuffer, szBuffer1))
-        {
-            ++i;
-            continue;
-        }	
-        do
-        {
-            ListView_SetCheckState(g_hList, ++i, TRUE);
-            ++iCheckCount;
-            ListView_GetItemText(g_hList, i+1, 5, szBuffer1, BufSize);
-        }while(i<iItemCount-1 && !lstrcmp(szBuffer, szBuffer1));
-    }
-    return iCheckCount;
-}
-
-
-void pInsertListViewItem(HWND g_hList, FileGroup::pFileInfo pfi, std::wstring* phash, int groupid, DWORD index)			// 分组显示 : LVIF_GROUPID
-{
-    TCHAR		Buffer[128];
-    LVITEM		lvI;
-
-    RtlZeroMemory(&lvI, sizeof(LVITEM));
-    lvI.iItem		= index;
-    lvI.mask		= LVIF_TEXT | LVIF_GROUPID;
-    lvI.cchTextMax	= 1024;
-    lvI.iGroupId    = groupid;
-
-    lvI.iSubItem = 0;
-    lvI.pszText  = const_cast<wchar_t*>(pfi->Name.c_str());
-    ListView_InsertItem(g_hList, &lvI);                           // 先对subitem=0使用InsertItem
-
-
-    ListView_SetItemText(g_hList, 0, 1, const_cast<wchar_t*>(pfi->Path.c_str()));
-    
-
-    if (pfi->Size > 966367641)		// 约为0.9GB
-    {
-        StringCbPrintf(Buffer, 120, TEXT("%.2lf GB"), pfi->Size/(double)0x40000000);
-    }
-    else if (pfi->Size > 943718)	// 0.9MB
-    {
-        StringCbPrintf(Buffer, 120, TEXT("%.2lf MB"), pfi->Size / (double)0x100000);
-    }
-    else if (pfi->Size > 921)        // 0.9KB
-    {
-        StringCbPrintf(Buffer, 120, TEXT("%.2lf KB"), pfi->Size / (double)0x400);
-    }
-    else
-    {
-        StringCbPrintf(Buffer, 120, TEXT("%d B"), pfi->Size);
-    }
-    ListView_SetItemText(g_hList, 0, 2, Buffer);
-
-
-    SYSTEMTIME st;
-    FILETIME ft;
-    
-    FileTimeToLocalFileTime(&pfi->CreationTime, &ft);
-    FileTimeToSystemTime(&ft, &st);
-    StringCbPrintf(Buffer, 120, TEXT("%04d/%02d/%02d %02d:%02d:%02d"),
-        st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
-    ListView_SetItemText(g_hList, 0, 3, Buffer);
-
-
-    FileTimeToLocalFileTime(&pfi->LastWriteTime, &ft);
-    FileTimeToSystemTime(&ft, &st);
-    StringCbPrintf(Buffer, 120, TEXT("%04d/%02d/%02d %02d:%02d:%02d"),
-        st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
-    ListView_SetItemText(g_hList, 0, 4, Buffer);
-
-
-    ListView_SetItemText(g_hList, 0, 5, phash ? (LPTSTR)phash->c_str() : 0);
-}
-
-
-void InsertListViewItem(FileGroup::pFileInfo pfi, int groupid, std::wstring* phash)
-{
-    //pInsertListViewItem(g_hList, pfi, phash, groupid, 0);
+    int k = 0;
+    while (k < SHA_1::SHA1_HASH_SIZE && !g_DataBase[index].hr.b[k]) ++k;
+    return k != SHA_1::SHA1_HASH_SIZE;
 }
 
 
@@ -346,7 +206,10 @@ bool HasParentDirectoryInList(HWND g_hList, const wchar_t *dir)
     {
         SendMessage(g_hList, LB_GETTEXT, i, (LPARAM)Buf);
         if (IsSubString(Buf, dir))
-            return true;
+        {
+            if (dir[wcslen(Buf)] == L'\\')  // 是文件路径形式而不是其他符号
+                return true;
+        }
     }
 
     return false;

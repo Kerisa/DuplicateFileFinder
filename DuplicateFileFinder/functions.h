@@ -10,15 +10,15 @@
 #include "resource.h"
 
 
-extern std::vector<std::pair<std::shared_ptr<FileGroup::FileInfo>, std::wstring>> g_DataBase;
+// 存储文件路径  目录crc - 父目录crc - 目录名
+extern std::map<DWORD, std::pair<DWORD, std::wstring>> g_PathList;
+extern std::vector<DataBaseInfo> g_DataBase;
 
 
 void OpenFolder                 (HWND hwnd, PTSTR pReceive);
 int  GetListViewCheckedCount    (HWND g_hList);
 BOOL InitListViewColumns        (HWND g_hList);
-int  DelDifferentHash           (HWND g_hList);
-int  SelectSameHash             (HWND g_hList);
-void InsertListViewItem         (FileGroup::pFileInfo pfi, int groupid, std::wstring* phash = 0);
+bool IsValidHash                (int index);
 void SplitString                (const wchar_t *src,
                                  std::vector<std::wstring>& v,
                                  const wchar_t *key,

@@ -28,6 +28,7 @@ FileGroupS  g_FileGroupS;
 FileGroupN  g_FileGroupN;
 FileGroupSN g_FileGroupSN;
 
+
 static int iClickItem;
 static int StatusBarSetPart[2];
 
@@ -128,12 +129,15 @@ static bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
 {
     static bool bPause = false;
     static TCHAR staticBuf[MAX_PATH];
-    wchar_t szBuffer[MAX_PATH1], szBuffer1[MAX_PATH1];
+    wchar_t szBuffer[MAX_PATH1] = { 0 }, szBuffer1[MAX_PATH1] = { 0 };
 
     switch (id)
     {
     case IDM_OPENFILE:
-    case IDM_DELETE:	
+    case IDM_DELETE:
+        if (iClickItem >= g_DataBase.size() || iClickItem < 0)
+            return TRUE;
+
         // 获取全路径
         ListView_GetItemText(g_hList, iClickItem, 1, szBuffer, _countof(szBuffer));
         StringCbCat(szBuffer, _countof(szBuffer), TEXT("\\"));
@@ -150,9 +154,10 @@ static bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
                 MB_YESNO | MB_DEFBUTTON2 | MB_ICONWARNING))
                 return TRUE;
             DeleteFile(szBuffer);
-            if (! GetLastError())
+            if (!GetLastError())
             {
                 ListView_DeleteItem(g_hList, iClickItem);
+                g_DataBase.erase(g_DataBase.begin() + iClickItem);
                 UpdateStatusBar(1, 0);
             }
             else
@@ -161,66 +166,69 @@ static bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
         return TRUE;
 
     case IDM_EXPLORER:
-        ListView_GetItemText(g_hList, iClickItem, 1, szBuffer, _countof(szBuffer));
-        ShellExecute(0, 0, szBuffer, 0, 0, SW_SHOW);
+        if (iClickItem < g_DataBase.size() && iClickItem >= 0)
+        {
+            ListView_GetItemText(g_hList, iClickItem, 1, szBuffer, _countof(szBuffer));
+            ShellExecute(0, 0, szBuffer, 0, 0, SW_SHOW);
+        }
         return TRUE;
 
     case IDM_DELETEALL:
+    {
         if (IDNO == MessageBox(hDlg, TEXT("确认删除全部选中文件？"), TEXT("提示"),
-                MB_YESNO | MB_DEFBUTTON2 | MB_ICONWARNING))
-                return TRUE;
+            MB_YESNO | MB_DEFBUTTON2 | MB_ICONWARNING))
+            return TRUE;
 
-        for (int i=ListView_GetItemCount(g_hList)-1; i>=0; --i)
-            if (ListView_GetCheckState(g_hList, i) == TRUE)
+        int delCnt = 0;
+        for (int i = 0; i < g_DataBase.size(); ++i)
+            if (g_DataBase[i].checkstate == CHECKBOX_SECLECTED)
             {
-                ListView_GetItemText(g_hList, i, 1, szBuffer, _countof(szBuffer));
-                StringCbCat(szBuffer, _countof(szBuffer), TEXT("\\"));
-                ListView_GetItemText(g_hList, i, 0, szBuffer1, _countof(szBuffer1));
-                StringCbCat(szBuffer, _countof(szBuffer), szBuffer1);
-                DeleteFile(szBuffer);
+                std::wstring p = g_pFileGroup->MakePath(g_DataBase[i].fi->PathCrc);
+                p += L'\\';
+                p += g_pFileGroup->GetFileNameByCrc(g_DataBase[i].fi->NameCrc);
+
+                DeleteFile(p.c_str());
                 if (!GetLastError())
-                    ListView_DeleteItem(g_hList, i);
+                {
+                    g_DataBase.erase(g_DataBase.begin() + i);
+                    ++delCnt;
+                    // i保持不变
+                    --i;
+                }
                 else
                 {
-                    StringCbPrintf(szBuffer1, _countof(szBuffer1), TEXT("无法删除文件%s，请手动删除"), szBuffer);
-                    SendMessage(g_hStatus, SB_SETTEXT, 0, (LPARAM)szBuffer1);
+                    StringCbPrintf(szBuffer1, _countof(szBuffer1),
+                        TEXT("无法删除文件%s，请手动删除"), p.c_str());
+                    UpdateStatusBar(0, szBuffer1);
                 }
             }
-        return TRUE;
 
-    case IDM_REMOVE:
-        StringCbPrintf(szBuffer, _countof(szBuffer), TEXT("已移除%d项"), DelDifferentHash(g_hList));
-        SendMessage(g_hStatus, SB_SETTEXT, 0, (LPARAM)szBuffer);
-        UpdateStatusBar(1, 0);
+        // 更新item数量
+        ListView_SetItemCount(g_hList, g_DataBase.size());
+        UpdateStatusBar(1, nullptr);
+        InvalidateRect(hDlg, NULL, TRUE);
+
+        StringCbPrintf(szBuffer1, _countof(szBuffer1),
+            TEXT("%d个文件已删除"), delCnt);
+        MessageBox(hDlg, szBuffer1, L"删除文件", MB_ICONINFORMATION);
         return TRUE;
+    }
 
     case IDM_HASHALL:
-        //params.bTerminate = FALSE;
-        //CreateThread(NULL, 0, ThreadHashOnly, &params.bTerminate, 0, NULL);
+        
         return TRUE;
 
     case IDM_SELALL:
-        for (int i=ListView_GetItemCount(g_hList)-1; i>=0; --i)
-            ListView_SetCheckState(g_hList, i, TRUE);
-        UpdateStatusBar(1, 0);
-        return TRUE;
-
     case IDM_USELALL:
-        for (int i=ListView_GetItemCount(g_hList); i>=0; --i)
-            ListView_SetCheckState(g_hList, i, FALSE);
+        for (int i = 0; i < g_DataBase.size(); ++i)
+            g_DataBase[i].checkstate = 
+                id == IDM_SELALL ? CHECKBOX_SECLECTED : CHECKBOX_UNSECLECTED;
         UpdateStatusBar(1, 0);
+        InvalidateRect(g_hList, NULL, TRUE);
         return TRUE;
 
-    case IDM_SELSAMEHASH:
-        SelectSameHash(g_hList);
-        UpdateStatusBar(1, 0);
-        return TRUE;
     //----------------------------------------------------------------------------------------------------
-    case IDC_NEEDHASH:
-        EnableWindow(GetDlgItem(hDlg, IDC_FILESIZE),
-            IsDlgButtonChecked(hDlg, IDC_NEEDHASH));
-        return TRUE;
-    //----------------------------------------------------------------------------------------------------
+
     case IDB_SETFILTER:
     case ID__40025:
         DialogBox(g_hInstance, MAKEINTRESOURCE(IDD_FILTER), hDlg, FilterDialogProc);
@@ -229,8 +237,7 @@ static bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
 
     case IDB_START:
     case ID__40026:
-        ListView_DeleteAllItems(g_hList);
-        ListView_RemoveAllGroups(g_hList);
+        ListView_SetItemCount(g_hList, 0);
 
         bPause = false;
         bTerminateThread = false;
@@ -346,7 +353,7 @@ LRESULT CALLBACK MainWndProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam)
             case LVN_KEYDOWN:
                 switch (((LPNMLVKEYDOWN)lParam)->wVKey)
                 {
-                case VK_CONTROL:			// 无法接收VK_RETURN
+                case VK_RETURN:
                     iClickItem = ListView_GetSelectionMark(g_hList);
                     SendMessage(hDlg, WM_COMMAND, IDM_OPENFILE, 0);
                     return TRUE;
@@ -355,7 +362,19 @@ LRESULT CALLBACK MainWndProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam)
                     iClickItem = ListView_GetSelectionMark(g_hList);
                     SendMessage(hDlg, WM_COMMAND, IDM_DELETE, 0);
                     return TRUE;
+
+                // 使用空格键切换checkbox
+                case VK_SPACE:
+                    iClickItem = ListView_GetSelectionMark(g_hList);
+                    g_DataBase[iClickItem].checkstate ^= 0x3;
+                    SendMessage(g_hList, LVM_REDRAWITEMS, iClickItem, iClickItem);
+                    UpdateStatusBar(1, nullptr);
+                    break;
                 }
+                break;
+
+            case NM_CLICK:
+                UpdateStatusBar(1, nullptr);
                 break;
 
             case NM_RCLICK:
@@ -377,8 +396,18 @@ LRESULT CALLBACK MainWndProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam)
             {
                 NMLVDISPINFO *pdi = reinterpret_cast<NMLVDISPINFO*>(lParam);
                 LVITEMW *pItem = &pdi->item;
+
+
+                // g_DataBase 线程不安全 (??ω?｀)
+
                 int itemid = pItem->iItem;
-                FileGroup::pFileInfo pfi = g_DataBase[itemid].first.get();
+                if (itemid >= g_DataBase.size())
+                    break;
+
+                pdi->item.state = INDEXTOSTATEIMAGEMASK(g_DataBase[itemid].checkstate);
+                pdi->item.stateMask = LVIS_STATEIMAGEMASK;
+
+                FileGroup::pFileInfo pfi = g_DataBase[itemid].fi.get();
                 if (pItem->mask & LVIF_TEXT)
                 {
                     SYSTEMTIME st;
@@ -390,14 +419,14 @@ LRESULT CALLBACK MainWndProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam)
                     case 0: // name
                         wcscpy_s(pItem->pszText,
                             pItem->cchTextMax,
-                            pfi->Name.c_str()
+                            g_pFileGroup->GetFileNameByCrc(pfi->NameCrc).c_str()
                             );
                         break;
 
                     case 1: // path
                         wcscpy_s(pItem->pszText,
                             pItem->cchTextMax,
-                            pfi->Path.c_str()
+                            g_pFileGroup->MakePath(pfi->PathCrc).c_str()
                             );
                         break;
 
@@ -433,9 +462,13 @@ LRESULT CALLBACK MainWndProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam)
                         break;
 
                     case 5: // hash
+                        wchar_t res[42];
+                        static_cast<SHA_1*>(0)->ToHexString(
+                            g_DataBase[itemid].hr.b, res, 42 * sizeof(wchar_t));
+
                         wcscpy_s(pItem->pszText,
                             pItem->cchTextMax,
-                            g_DataBase[itemid].second.c_str()
+                            res
                             );
                         break;
 
@@ -457,7 +490,7 @@ LRESULT CALLBACK MainWndProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam)
 
 static bool Cls_OnCommand_filter(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
 {
-    TCHAR Buffer[MAX_PATH];
+    wchar_t Buffer[MAX_PATH];
 
     switch (id)
     {
@@ -477,14 +510,17 @@ static bool Cls_OnCommand_filter(HWND hDlg, int id, HWND hwndCtl, UINT codeNotif
             if (!HasParentDirectoryInList(GetDlgItem(hDlg, IDC_LIST_DIR), Buffer))
             {
                 int ans = 0;
-                if (LB_ERR != SendDlgItemMessage(hDlg, IDC_LIST_DIR, LB_FINDSTRING, -1, (LPARAM)Buffer))
+                wchar_t detectChild[MAX_PATH] = { 0 };
+                wcscpy_s(detectChild, MAX_PATH - 2, Buffer);
+                detectChild[min(MAX_PATH-2, wcslen(Buffer))] = L'\\';
+                if (LB_ERR != SendDlgItemMessage(hDlg, IDC_LIST_DIR, LB_FINDSTRING, -1, (LPARAM)detectChild))
                     ans = MessageBox(hDlg, L"列表中包含的子文件夹将被剔除", L"提示", MB_YESNO);
                 if (ans == IDYES)
                 {
                     int i;
                     do
                     {
-                        i = SendDlgItemMessage(hDlg, IDC_LIST_DIR, LB_FINDSTRING, -1, (LPARAM)Buffer);
+                        i = SendDlgItemMessage(hDlg, IDC_LIST_DIR, LB_FINDSTRING, -1, (LPARAM)detectChild);
                         SendDlgItemMessage(hDlg, IDC_LIST_DIR, LB_DELETESTRING, i, 0);
                     }
                     while (i != LB_ERR);
@@ -619,7 +655,7 @@ DWORD WINAPI Thread(PVOID pvoid)
     while (1)
     {
         WaitForSingleObject(g_ThreadSignal, INFINITE);
-
+        
         // if (...) ExitThread
         g_pFileGroup->bTerminate = &bTerminateThread;
 
@@ -630,35 +666,7 @@ DWORD WINAPI Thread(PVOID pvoid)
 }
 
 
-//////////////////////////////////////////////////////////////////////////////////////////////
-// 功能  -	右键菜单中哈希选中文件时调用
-// pviod -	指向pparams->bOptions的指针，用于终止哈希
-//////////////////////////////////////////////////////////////////////////////////////////////
 DWORD WINAPI ThreadHashOnly(PVOID pvoid)
 {
-    //BOOL  * pf = (BOOL *)pvoid;
-    //int		i;
-    //TCHAR	szBuffer[MAX_PATH1], szBuffer1[MAX_PATH];
-    //wchar_t Result[48];
-    //SHA_1   Hash;
-
-    //EnableWindow(GetDlgItem(GetParent(g_hList), IDB_BROWSE), FALSE);
-    //EnableWindow(GetDlgItem(GetParent(g_hList), IDB_SEARCH), FALSE);
-    //EnableWindow(GetDlgItem(GetParent(g_hList), IDB_PAUSE),  FALSE);
-    //
-    //for (i=ListView_GetItemCount(g_hList)-1; i>=0; --i)
-    //	if (ListView_GetCheckState(g_hList, i) == TRUE)			// 获取选中的行并哈希
-    //	{
-    //		ListView_GetItemText(g_hList, i, 1, szBuffer, MAX_PATH1);
-    //		StringCbCat(szBuffer, MAX_PATH1, TEXT("\\"));
-    //		ListView_GetItemText(g_hList, i, 0, szBuffer1, MAX_PATH1);
-    //		StringCbCat(szBuffer, MAX_PATH1, szBuffer1);
-    //		ListView_SetItemText(g_hList, i, 5, TEXT("哈希中..."));
-    //		Hash.CalculateSha1(szBuffer, Result, MAX_PATH, !(*pf));
-    //		ListView_SetItemText(g_hList, i, 5, Result);
-    //	}
-    //EnableWindow(GetDlgItem(GetParent(g_hList), IDB_BROWSE), TRUE);
-    //EnableWindow(GetDlgItem(GetParent(g_hList), IDB_SEARCH), TRUE);
-    //EnableWindow(GetDlgItem(GetParent(g_hList), IDB_PAUSE),  TRUE);
     return 0;
 }
