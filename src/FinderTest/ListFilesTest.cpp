@@ -3,8 +3,8 @@
 #include <vector>
 #include <string>
 #include <initializer_list>
-#include "../Find/Parameters.h"
-#include "../Find/ListFile.h"
+#include "../Finder/Parameters.h"
+#include "../Finder/ListFile.h"
 #include "ListFilesTest.h"
 
 using namespace std;

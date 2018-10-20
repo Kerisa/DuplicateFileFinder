@@ -5,7 +5,7 @@
 #include <initializer_list>
 #include <vector>
 #include <string>
-#include "../find/Parameters.h"
+#include "../Finder/Parameters.h"
 #include "ParseCommandTest.h"
 
 using namespace std;

@@ -19,9 +19,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{4F8D63E8-C304-4198-97FF-5DA6046ACE7B}</ProjectGuid>
+    <ProjectGuid>{FA305491-8023-4819-9402-1CF722479C95}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>Find</RootNamespace>
+    <RootNamespace>FindTest</RootNamespace>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -151,9 +151,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\include\utls\utility.h" />
-    <ClInclude Include="ListFile.h" />
-    <ClInclude Include="Parameters.h" />
+    <ClInclude Include="ListFilesTest.h" />
+    <ClInclude Include="ParseCommandTest.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
@@ -162,9 +161,11 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Find.cpp" />
-    <ClCompile Include="ListFile.cpp" />
-    <ClCompile Include="Parameters.cpp" />
+    <ClCompile Include="..\Finder\ListFile.cpp" />
+    <ClCompile Include="..\Finder\Parameters.cpp" />
+    <ClCompile Include="ListFilesTest.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="ParseCommandTest.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
