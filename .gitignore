@@ -32,3 +32,11 @@ Debug
 *.tlog
 *.log
 *.aps
+
+*.ilk
+*.ipdb
+*.iobj
+*.suo
+*.user
+/bin/Find_d.exe
+/pdb/Find_d.pdb
