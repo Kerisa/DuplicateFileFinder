@@ -1,15 +1,53 @@
 #include "stdafx.h"
 #include <algorithm>
+#include <cassert>
 #include <iterator>
+#include <fstream>
 #include <functional>
+#include <map>
 #include <set>
 #include <vector>
 #include "Compare.h"
 #include "Common.h"
 #include "Parammeters.h"
+#include "crc32/crc.h"
 #include <Windows.h>
 
 using namespace std;
+
+uint32_t GetFileCrc(const std::wstring& path)
+{
+    ifstream in(path, ios::binary);
+    if (!in.is_open())
+    {
+        assert("cannot open file" && 0);
+        return 0;
+    }
+
+    in.seekg(0, ios::end);
+    ifstream::streampos length = in.tellg();
+    in.seekg(0, ios::beg);
+
+    char buf[1024] = { 0 };
+    uint32_t crc = 0;
+    while (length > 0)
+    {
+        if (length >= sizeof(buf))
+        {
+            in.read(buf, sizeof(buf));
+            crc = CRC32((unsigned char*)buf, crc, sizeof(buf));
+            length -= sizeof(buf);
+        }
+        else
+        {
+            in.read(buf, length);
+            crc = CRC32((unsigned char*)buf, crc, length);
+            break;
+        }
+    }
+    in.close();
+    return crc;
+}
 
 void FillFileRecord(Parameters & param)
 {
@@ -112,6 +150,29 @@ std::vector<std::set<const FileRecord*>> CompareFile(Parameters & param)
     });
     
 
+    if (param.mContent.mSwitch == Parameters::ContentParam::MATCH_WHOLE_FILE)
+    {
+        std::vector<std::set<const FileRecord*>> newGroups;
+        for (auto& g : groups)
+        {
+            std::map<uint32_t, vector<const FileRecord*>> tmp;
+            for (auto& fr : g)
+            {
+                uint32_t crc = GetFileCrc(fr->mPath);
+                tmp[crc].push_back(fr);
+            }
+            for (auto it = tmp.begin(); it != tmp.end(); ++it)
+                if (it->second.size() > 1)
+                {
+                    std::set<const FileRecord*> n;
+                    copy(it->second.begin(), it->second.end(), inserter(n, n.end()));
+                    newGroups.push_back(n);
+                }
+
+        }
+
+        groups = newGroups;
+    }
     
 
     return groups;

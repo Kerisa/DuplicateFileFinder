@@ -50,5 +50,8 @@
     <ClCompile Include="..\DoubleChecker\Compare.cpp">
       <Filter>ref</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\include\crc32\crc.cpp">
+      <Filter>ref</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

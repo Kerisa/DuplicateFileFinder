@@ -116,6 +116,14 @@ void CompareFileTest::CompareTest()
     ret = param.ParseCommand(vector<wstring>{L"-c", L"..\\test\\filelist2.txt" });
     Assert(ret);
     list = CompareFile(param);
+    ret = GroupCompare(list, vector<vector<wstring>>{
+        { L"D:\\TestFolder2\\1.!bt", L"D:\\TestFolder2\\1.bak"},
+        { L"D:\\TestFolder2\\cn", L"D:\\TestFolder2\\cn_windows_10_enterprise_x64_dvd.sha", L"D:\\TestFolder2\\cn_windows_10_enterprise_x64_dvd_6846957.txt",
+            L"D:\\TestFolder2\\1\\cn_windows_10_enterprise_x64_dvd_6846957.sha", L"D:\\TestFolder2\\cnamsl.sha",
+            L"D:\\TestFolder2\\windows_10.sha"
+        },
+    });
+    Assert(ret);
 
 
     ////////////////////////////////////////////////////////////////////////////
@@ -168,6 +176,14 @@ void CompareFileTest::CompareTest()
     ret = param.ParseCommand(vector<wstring>{L"-s", L"-c", L"..\\test\\filelist2.txt" });
     Assert(ret);
     list = CompareFile(param);
+    ret = GroupCompare(list, vector<vector<wstring>>{
+        { L"D:\\TestFolder2\\1.!bt", L"D:\\TestFolder2\\1.bak"},
+        { L"D:\\TestFolder2\\cn", L"D:\\TestFolder2\\cn_windows_10_enterprise_x64_dvd.sha", L"D:\\TestFolder2\\cn_windows_10_enterprise_x64_dvd_6846957.txt",
+            L"D:\\TestFolder2\\1\\cn_windows_10_enterprise_x64_dvd_6846957.sha", L"D:\\TestFolder2\\cnamsl.sha",
+            L"D:\\TestFolder2\\windows_10.sha"
+        },
+    });
+    Assert(ret);
 
 
     ret = param.ParseCommand(vector<wstring>{L"-t", L"-n", L"..\\test\\filelist2.txt" });
@@ -199,19 +215,41 @@ void CompareFileTest::CompareTest()
     ret = param.ParseCommand(vector<wstring>{L"-t", L"-c", L"..\\test\\filelist2.txt" });
     Assert(ret);
     list = CompareFile(param);
+    ret = GroupCompare(list, vector<vector<wstring>>{
+        { L"D:\\TestFolder2\\cn", L"D:\\TestFolder2\\cn_windows_10_enterprise_x64_dvd.sha",  L"D:\\TestFolder2\\cnamsl.sha" },
+        {
+            L"D:\\TestFolder2\\cn_windows_10_enterprise_x64_dvd_6846957.txt",
+            L"D:\\TestFolder2\\1\\cn_windows_10_enterprise_x64_dvd_6846957.sha",
+        },
+    });
+    Assert(ret);
 
 
     ret = param.ParseCommand(vector<wstring>{L"-n", L"-c", L"..\\test\\filelist2.txt" });
     Assert(ret);
     list = CompareFile(param);
+    ret = GroupCompare(list, vector<vector<wstring>>{ });
+    Assert(ret);
 
 
     ret = param.ParseCommand(vector<wstring>{L"-ne", L"-c", L"..\\test\\filelist2.txt" });
     Assert(ret);
     list = CompareFile(param);
+    ret = GroupCompare(list, vector<vector<wstring>>{
+        { L"D:\\TestFolder2\\1.!bt", L"D:\\TestFolder2\\1.bak"},
+        { L"D:\\TestFolder2\\cn_windows_10_enterprise_x64_dvd_6846957.txt", L"D:\\TestFolder2\\1\\cn_windows_10_enterprise_x64_dvd_6846957.sha" },
+    });
+    Assert(ret);
 
 
     ret = param.ParseCommand(vector<wstring>{L"-ns", L"windows", L"-c", L"..\\test\\filelist2.txt" });
     Assert(ret);
     list = CompareFile(param);
+    ret = GroupCompare(list, vector<vector<wstring>>{
+        {
+          L"D:\\TestFolder2\\cn_windows_10_enterprise_x64_dvd.sha", L"D:\\TestFolder2\\cn_windows_10_enterprise_x64_dvd_6846957.txt",
+          L"D:\\TestFolder2\\1\\cn_windows_10_enterprise_x64_dvd_6846957.sha", L"D:\\TestFolder2\\windows_10.sha"
+        },
+    });
+    Assert(ret);
 }
