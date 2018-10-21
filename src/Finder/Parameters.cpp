@@ -11,8 +11,8 @@ using namespace std;
 
 wstring Parameters::Usage()
 {
-	return
-		LR"(find.exe path <options>
+    return
+        LR"(finder.exe path <options>
 options:
 -type +/-(type1,type2,...)
     include or exclude matched file suffix
@@ -37,8 +37,8 @@ options:
     'a' : for archive
 
 eg:
-    find c:\\windows -type +(dll,ini) -size (500k:5m) -attr +s
-    find c:\\windows -type +(exe) -size (:500k) -attr -sha
+    finder c:\\windows -type +(dll,ini) -size (500k:5m) -attr +s
+    finder c:\\windows -type +(exe) -size (:500k) -attr -sha
 )";
 }
 
@@ -50,44 +50,44 @@ bool Parameters::ParseCommand(const vector<wstring>& cmd, wstring& error)
         return false;
     }
 
-	mSearchPath.clear();
-	DWORD attr = GetFileAttributes(cmd[0].c_str());
+    mSearchPath.clear();
+    DWORD attr = GetFileAttributes(cmd[0].c_str());
     if (attr == INVALID_FILE_ATTRIBUTES || !(attr & FILE_ATTRIBUTE_DIRECTORY))
     {
         error = L"[" + cmd[0] + L"] is not a valid directory";
         return false;
     }
 
-	mSearchPath = cmd[0];
-	assert(!mSearchPath.empty());
+    mSearchPath = cmd[0];
+    assert(!mSearchPath.empty());
     if (mSearchPath.back() == L'\\')
         mSearchPath.pop_back();
 
-	for (size_t i = 1; i < cmd.size();)
-	{
-		if (cmd[i] == L"-type")
-		{
+    for (size_t i = 1; i < cmd.size();)
+    {
+        if (cmd[i] == L"-type")
+        {
             if (!ParseType(cmd, i, error))
                 return false;
-		}
-		else if (cmd[i] == L"-size")
-		{
+        }
+        else if (cmd[i] == L"-size")
+        {
             if (!ParseSize(cmd, i, error))
                 return false;
-		}
-		else if (cmd[i] == L"-attr")
-		{
+        }
+        else if (cmd[i] == L"-attr")
+        {
             if (!ParseAttr(cmd, i, error))
                 return false;
-		}
-		else
-		{
+        }
+        else
+        {
             error = L"Invalid option ";
             error += cmd[i];
-			return false;
-		}
-	}
-	return true;
+            return false;
+        }
+    }
+    return true;
 }
 
 bool Parameters::ParseType(const std::vector<std::wstring>& cmd, size_t & index, std::wstring& error)

@@ -1,0 +1,108 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html;
+      charset=windows-1252">
+    <title>DirSizeCalc</title>
+    <link href="./styles/layout.css" rel="stylesheet" type="text/css">
+  </head>
+  <body>
+    <div id="content">
+      <h1>DirSizeCalc Charts<br>
+      </h1>
+      <p>Version 1.10<br>
+        <br>
+      </p>
+      <p>DirSizeCalc Charts is a Lister plug-in for the file manager
+        Total Commander. It displays a list of all files and folders
+        contained in a folder sorted descending by size. A bar chart is
+        displayed next to the items to illustrate the size dimensions at
+        first glance.<br>
+      </p>
+      <h2>Contents</h2>
+      <ol>
+        <li><a href="#requirements">System requirements </a></li>
+        <li><a href="#use">Use</a>
+          <ol>
+            <li><a href="#2.1_Navigate">Navigate</a></li>
+            <li><a href="#2.2_Delete_items">Delete</a></li>
+            <li><a
+href="file:///Users/christian/Documents/Projekte/Visual%20C++/DirSizeCalc/DirSizeCalcCharts/package/readme_charts.htm#additional_information">Additional
+                information for displayed values</a></li>
+            <li><a href="#empty_directory_display">Size display for
+                (almost) empty directories</a></li>
+          </ol>
+        </li>
+        <li><a href="#contact">Author contact </a></li>
+        <li><a href="#license">License</a></li>
+      </ol>
+      <h2>1. System requirements <a name="requirements"></a></h2>
+      <p>The plugin has been tested with Total Commander 8.51a. It
+        hasn't been tested on older version of Total Commander. The
+        plugin has been tested with WIndows 7. It hasn't been tested
+        with older version of Windows. Compatibility problems on Windows
+        XP have been reported.<br>
+      </p>
+      <h2>2. Use<a name="use"></a></h2>
+      In order to use DirSizeCalc Charts select a folder in Total
+      Commander and press F3 to display the folder size information in a
+      new Lister window or press Ctrl+Q to display the folder size
+      information in the Quickview window.<br>
+      If something else is displayed you might want to have a look a the
+      Lister plugin hierarchy in the Lister settings in Total Commander.
+      Press '4' to navigate between installed Lister plugins capable of
+      handling folders. In some cases you might have to press '4' twice.
+      It's a known issue.<br>
+      <h3><a name="2.1_Navigate"></a>2.1 Navigate<a name="navigate"></a></h3>
+      In order to navigate between folders press 'Return' or doubleclick
+      on the subfolder. In order to navigate to parent directory you
+      have to press 'Backspace'.<br>
+      <h3><a name="2.2_Delete_items"></a>2.2 Delete items<a
+          name="delete_items"></a></h3>
+      You may move items to the recycle bin by pressing 'Delete'. If
+      moving to recycle bin isn't possible, the files will be deleted.
+      In all cases you have to confirm the operation.<br>
+      <h3>2.3 Additional values for displayed values <a
+          name="additional_information"></a></h3>
+      <p>DirSizeCalc shows some tokens in front of the calculation
+        result, if the complete directory content couldn't be retrieved.
+        This can be the case for several reasons: </p>
+      <ul>
+        <li>AD = Access denied. This error is displayed if the current
+          user has no sufficient access permissions for opening the
+          directory. </li>
+        <li>U = Unreadable Unicode name. This error occurs if file name
+          contains characters which don't match the currently set
+          Windows code page and you have deactivated storing of short
+          file names.</li>
+        <li>E = Unknown error. Unknown error should not be displayed at
+          all. When it's displayed please report it to me.</li>
+        <li>NF = Not followed reparse point. The user has set the option
+          to now follow reparse points which results in not including
+          these these files in the calculation.</li>
+      </ul>
+      <h3>2.4 Size display of (almost) empty directories <a
+          name="empty_directory_display"></a></h3>
+      <p>There can be multiple reasons for a directory size of 0 bytes.
+        This information is displayed left to the size when appropriate.
+        The following cases are distinguished: </p>
+      <ul>
+        <li>The directory contains only files of size 0. In this case
+          DirSizeCalc displays 0 as size.</li>
+        <li>The directory contains only empty subdirectories but no
+          files. In this case "No files" is being displayed.</li>
+        <li>The directory is really empty In this case "Empty is being
+          displayed. </li>
+      </ul>
+      <h2>3. Contact<a name="contact"></a></h2>
+      <p>There is a <a
+          href="http://www.ghisler.ch/board/viewtopic.php?t=42391">thread</a>
+        in the <a href="http://www.ghisler.ch/">Total Commander forum</a>
+        which can be used to discuss problems, bug and suggestions.</p>
+      <h2>4. License and liability <a name="license"></a></h2>
+      <p> Any liability for damage of any sort is hereby denied.<br>
+        All rights reserved. This Total Commander plug-in is copyrighted
+        free ware.</p>
+    </div>
+  </body>
+</html>

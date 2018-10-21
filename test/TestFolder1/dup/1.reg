@@ -1,0 +1,21 @@
+REGEDIT4
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Bohemia Interactive Studio]
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Bohemia Interactive Studio\ArmA 2]
+"MAIN"="g:\\game\\ArmA 2"
+"KEY"=hex:49,cd,52,80,0b,8c,71,af,66,1b,86,89,10,8a,6a
+"DATA"="%MAIN%"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Bohemia Interactive Studio\ArmA 2 BAF]
+"MAIN"="G:\\Game\\ArmA 2 Anniversary"
+"KEY"=hex:01,bf,02,60,e6,a6,04,2c,4e,37,1d,e8,d9,27,38
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Bohemia Interactive Studio\ArmA 2 OA]
+"MAIN"="G:\\Game\\ArmA 2 Anniversary"
+"KEY"=hex:01,bf,02,60,e6,a6,04,2c,4e,37,1d,e8,d9,27,38
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Bohemia Interactive Studio\ArmA 2 PMC]
+"MAIN"="G:\\Game\\ArmA 2 Anniversary"
+"KEY"=hex:01,bf,02,60,e6,a6,04,2c,4e,37,1d,e8,d9,27,38
+

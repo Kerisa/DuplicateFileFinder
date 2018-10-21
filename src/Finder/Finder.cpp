@@ -23,7 +23,7 @@ int _tmain(int argc, wchar_t** argv)
         return 1;
     }
 
-	Parameters param;
+    Parameters param;
     wstring err;
     if (!param.ParseCommand(cmd, err))
     {

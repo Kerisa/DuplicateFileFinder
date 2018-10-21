@@ -1,0 +1,39 @@
+PERFORMER "管平湖"
+TITLE "管平湖古琴曲集CD1"
+FILE "管平湖 - 管平湖古琴曲集.CD1.flac" WAVE
+  TRACK 01 AUDIO
+    TITLE "流水"
+    PERFORMER "管平湖"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "长清"
+    PERFORMER "管平湖"
+    INDEX 01 07:34:37
+  TRACK 03 AUDIO
+    TITLE "鸥鹭忘机"
+    PERFORMER "管平湖"
+    INDEX 01 14:22:37
+  TRACK 04 AUDIO
+    TITLE "良宵引"
+    PERFORMER "管平湖"
+    INDEX 01 19:36:50
+  TRACK 05 AUDIO
+    TITLE "龙翔操"
+    PERFORMER "管平湖"
+    INDEX 01 22:47:12
+  TRACK 06 AUDIO
+    TITLE "乌夜啼"
+    PERFORMER "管平湖"
+    INDEX 01 29:53:25
+  TRACK 07 AUDIO
+    TITLE "春晓吟"
+    PERFORMER "管平湖"
+    INDEX 01 38:27:37
+  TRACK 08 AUDIO
+    TITLE "白雪"
+    PERFORMER "管平湖"
+    INDEX 01 41:54:00
+  TRACK 09 AUDIO
+    TITLE "广陵散"
+    PERFORMER "管平湖"
+    INDEX 01 47:17:25

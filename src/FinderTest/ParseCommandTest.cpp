@@ -305,4 +305,14 @@ void ParseCommandTest::TestCase_Multi()
     Assert(!param.mIncludeType);
     Assert(param.mTypeList.size() == 1);
     Assert(param.mTypeList.find(L"mp3") != param.mTypeList.end());
+
+
+    ret = param.ParseCommand(vector<wstring>{ L".", L"-type", L"-(mp3)", L"-type", L"+(exe)" });
+    Assert(!ret);
+
+    ret = param.ParseCommand(vector<wstring>{ L".", L"-size", L"(:10m)", L"-size", L"(:10k)" });
+    Assert(!ret);
+
+    ret = param.ParseCommand(vector<wstring>{ L".", L"-attr", L"-(a)", L"-attr", L"+(s)" });
+    Assert(!ret);
 }

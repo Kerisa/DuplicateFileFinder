@@ -16,25 +16,25 @@ class Parameters
     };
 
 public:
-	enum {
-		NONE		= 0x0,
-		READONLY	= 0x1,
-		HIDDEN		= 0x2,
-		SYSTEM		= 0x4,
-		ARCHIVE		= 0x8,
-	};
+    enum {
+        NONE        = 0x0,
+        READONLY    = 0x1,
+        HIDDEN      = 0x2,
+        SYSTEM      = 0x4,
+        ARCHIVE     = 0x8,
+    };
 
-	std::wstring				            mSearchPath;
-	std::set<std::wstring, StringCompare>   mTypeList;
-	uint64_t					            mSizeLow{ 0 };
-	uint64_t					            mSizeHigh{ 0xfffffffffffffffful };
-	uint32_t					            mAttrib{ NONE };
-	bool						            mIncludeType{ false };
-	bool						            mIncludeAttr{ false };
+    std::wstring                            mSearchPath;
+    std::set<std::wstring, StringCompare>   mTypeList;
+    uint64_t                                mSizeLow{ 0 };
+    uint64_t                                mSizeHigh{ 0xfffffffffffffffful };
+    uint32_t                                mAttrib{ NONE };
+    bool                                    mIncludeType{ false };
+    bool                                    mIncludeAttr{ false };
 
 public:
-	static std::wstring Usage();
-	bool ParseCommand(const std::vector<std::wstring>& cmd, std::wstring& error = std::wstring());
+    static std::wstring Usage();
+    bool ParseCommand(const std::vector<std::wstring>& cmd, std::wstring& error = std::wstring());
 
 private:
     bool ParseType(const std::vector<std::wstring>& cmd, size_t& index, std::wstring& error);

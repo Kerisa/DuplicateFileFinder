@@ -1,0 +1,8 @@
+[plugininstall] 
+description=7z unicode Total Commander 8.01 Plugin
+descriptiondeu=7z unicode Total Commander 8.01 Plugin
+descriptionrus=7z unicode Total Commander 8.01 Plugin
+type=wcx 
+file=Total7zip.wcx 
+defaultextension=7z
+defaultdir=Total7zip

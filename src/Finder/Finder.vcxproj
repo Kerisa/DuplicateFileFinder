@@ -151,6 +151,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\include\Common.h" />
     <ClInclude Include="..\..\include\utls\utility.h" />
     <ClInclude Include="ListFile.h" />
     <ClInclude Include="Parameters.h" />
