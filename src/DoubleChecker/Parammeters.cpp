@@ -206,18 +206,33 @@ bool Parameters::SetupFileList(const std::wstring & path, std::wstring& error)
     vector<char> data((size_t)length + 2);
     in.read(data.data(), length);
     in.close();
-    auto parts = Utility::Splite((const wchar_t*)data.data(), L"\r\n");
-    for (auto& name : parts)
+
+    int n = MultiByteToWideChar(CP_UTF8, NULL, data.data(), -1, NULL, NULL);
+    vector<wchar_t> wdata(n);
+    MultiByteToWideChar(CP_UTF8, NULL, data.data(), -1, wdata.data(), wdata.size());
+
+    auto rows = Utility::Splite(wdata.data(), L"\r\n");
+    for (auto& row : rows)
     {
-        if (PathFileExists(name.c_str()))
+        auto parts = Utility::Splite(row, L"|");
+        if (parts.size() != 3)      // 无效的行
+        {
+            assert("Invalid row" && 0);
+            continue;
+        }
+
+        if (PathFileExists(parts[0].c_str()))
         {
             mFileList.emplace_back();
             FileRecord& fr = mFileList.back();
-            fr.mPath = name;
-            fr.mSuffixOffset = PathFindExtension(name.c_str()) - name.c_str();
-            if (fr.mSuffixOffset < name.size())
+            fr.mPath = parts[0];
+            fr.mSuffixOffset = PathFindExtension(parts[0].c_str()) - parts[0].c_str();
+            if (fr.mSuffixOffset < parts[0].size())
                 ++fr.mSuffixOffset;
-            fr.mNameOffset = PathFindFileName(name.c_str()) - name.c_str();
+            fr.mNameOffset = PathFindFileName(parts[0].c_str()) - parts[0].c_str();
+
+            fr.mFileSize = _wtoi(parts[1].c_str());
+            fr.mLastWriteTime = _wtoi(parts[2].c_str());
         }
     }
 

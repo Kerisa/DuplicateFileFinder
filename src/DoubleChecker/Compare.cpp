@@ -102,7 +102,7 @@ void SortAndDivide(vector<const FileRecord*>& ref, std::vector<std::set<const Fi
 
 std::vector<std::set<const FileRecord*>> CompareFile(Parameters & param)
 {
-    FillFileRecord(param);
+    //FillFileRecord(param);
 
     vector<const FileRecord*> ref;
     transform(param.mFileList.begin(), param.mFileList.end(), back_inserter(ref), [](const FileRecord& fr) { return &fr; });

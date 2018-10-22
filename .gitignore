@@ -53,3 +53,7 @@ Release
 /bin/DoubleChecker_d.exe
 /pdb/DoubleCheckerTest_d.pdb
 /pdb/DoubleChecker_d.pdb
+/bin/DoubleChecker.exe
+/bin/DoubleCheckerTest.exe
+/pdb/DoubleChecker.pdb
+/pdb/DoubleCheckerTest.pdb

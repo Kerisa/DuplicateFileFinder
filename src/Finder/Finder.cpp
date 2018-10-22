@@ -6,6 +6,7 @@
 #include <iostream>
 #include "Parameters.h"
 #include "ListFile.h"
+#include <Windows.h>
 
 using namespace std;
 
@@ -17,7 +18,7 @@ int _tmain(int argc, wchar_t** argv)
         cmd.push_back(argv[i]);
     }
 
-    if (cmd.empty() || cmd.size() == 1 && (cmd[1] == L"--help" || cmd[1] == L"-h"))
+    if (cmd.empty() || cmd.size() == 1 && (cmd[0] == L"--help" || cmd[0] == L"-h"))
     {
         wcout << Parameters::Usage();
         return 1;
@@ -35,10 +36,17 @@ int _tmain(int argc, wchar_t** argv)
     setlocale(LC_ALL, "zh-cn");
     for (auto& r : list)
     {
-        char buf[1024] = { 0 };
-        size_t conved = 0;
-        wcstombs_s(&conved, buf, sizeof(buf), r.mPath.c_str(), r.mPath.size() * sizeof(wchar_t));
-        cout << buf << "\n";
+        int n = WideCharToMultiByte(CP_UTF8, NULL, r.mPath.c_str(), -1, NULL, NULL, NULL, NULL);
+        vector<char> mcb(n);
+        WideCharToMultiByte(CP_UTF8, NULL, r.mPath.c_str(), -1, mcb.data(), n, NULL, NULL);
+        cout.write(mcb.data(), n - 1);
+
+        wchar_t wbuf[128];
+        swprintf_s(wbuf, _countof(wbuf), L"|%lld|%lld\n", r.mFileSize, r.mLastWriteTime);
+        n = WideCharToMultiByte(CP_UTF8, NULL, wbuf, -1, NULL, NULL, NULL, NULL);
+        mcb.resize(n);
+        WideCharToMultiByte(CP_UTF8, NULL, wbuf, -1, mcb.data(), n, NULL, NULL);
+        cout.write(mcb.data(), n - 1);
     }
     cout << endl;
     return 0;
