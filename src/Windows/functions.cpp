@@ -247,6 +247,7 @@ void EnableControls(HWND hDlg, int id, bool enable)
         EnableWindow(GetDlgItem(hDlg, IDC_CHECK_ATTR_R), enable);
         EnableWindow(GetDlgItem(hDlg, IDC_CHECK_ATTR_S), enable);
         EnableWindow(GetDlgItem(hDlg, IDC_CHECK_ATTR_H), enable);
+        EnableWindow(GetDlgItem(hDlg, IDC_CHECK_ATTR_N), enable);
         break;
 
 	case IDC_CHECK_FILE_TYPE:
@@ -396,10 +397,12 @@ void LoadFilterConfigToDialog(HWND hDlg, Filter& filter)
         CheckDlgButton(hDlg, IDC_RADIO_ATTRIB_IGN,
             status == Filter::Type_Ignore);
 
+        assert(filter.SelectedAttributes == Filter::Attrib_Normal || !(filter.SelectedAttributes & Filter::Attrib_Normal));
         CheckDlgButton(hDlg, IDC_CHECK_ATTR_A, filter.SelectedAttributes & Filter::Attrib_Archive);
         CheckDlgButton(hDlg, IDC_CHECK_ATTR_R, filter.SelectedAttributes & Filter::Attrib_ReadOnly);
         CheckDlgButton(hDlg, IDC_CHECK_ATTR_S, filter.SelectedAttributes & Filter::Attrib_System);
         CheckDlgButton(hDlg, IDC_CHECK_ATTR_H, filter.SelectedAttributes & Filter::Attrib_Hide);
+        CheckDlgButton(hDlg, IDC_CHECK_ATTR_N, filter.SelectedAttributes & Filter::Attrib_Normal);
     }
 
     //------------------------------------------- 查找的目录
@@ -552,6 +555,11 @@ void UpdateFilterConfig(HWND hDlg, Filter& filter)
             Filter::Attrib_System : 0;
         filter.SelectedAttributes |= IsDlgButtonChecked(hDlg, IDC_CHECK_ATTR_H) ?
             Filter::Attrib_Hide : 0;
+
+        filter.SelectedAttributes = IsDlgButtonChecked(hDlg, IDC_CHECK_ATTR_N) ?
+            Filter::Attrib_Normal : filter.SelectedAttributes;
+
+        assert(filter.SelectedAttributes == Filter::Attrib_Normal || !(filter.SelectedAttributes & Filter::Attrib_Normal));
     }
 
     //------------------------------------------- 搜索路径

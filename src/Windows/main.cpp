@@ -542,6 +542,26 @@ static bool Cls_OnCommand_filter(HWND hDlg, int id, HWND hwndCtl, UINT codeNotif
         EnableControls(hDlg, id, !!IsDlgButtonChecked(hDlg, id));
         return TRUE;
 
+    case IDC_CHECK_ATTR_A:
+    case IDC_CHECK_ATTR_R:
+    case IDC_CHECK_ATTR_S:
+    case IDC_CHECK_ATTR_H:
+        if (IsDlgButtonChecked(hDlg, id))
+        {
+            CheckDlgButton(hDlg, IDC_CHECK_ATTR_N, false);
+        }
+        break;
+
+    case IDC_CHECK_ATTR_N: 
+        if (IsDlgButtonChecked(hDlg, id))
+        {
+            CheckDlgButton(hDlg, IDC_CHECK_ATTR_A, false);
+            CheckDlgButton(hDlg, IDC_CHECK_ATTR_R, false);
+            CheckDlgButton(hDlg, IDC_CHECK_ATTR_S, false);
+            CheckDlgButton(hDlg, IDC_CHECK_ATTR_H, false);
+        }
+        break;
+
     case IDC_RADIO_FULLNAME:
         CheckDlgButton(hDlg, IDC_RADIO_INCNAME, false);
 		EnableWindow(GetDlgItem(hDlg, IDC_CHECK_NOSUFFIX), TRUE);
@@ -695,6 +715,8 @@ std::vector<std::wstring> MakeSearchCommand(Filter& filter)
 			tmp += L'h';
 		if (filter.SelectedAttributes & Filter::Attrib_System)
 			tmp += L's';
+        if (filter.SelectedAttributes & Filter::Attrib_Normal)
+            tmp += L'n';
 
 		if (filter.Switch[Filter::Search_FileAttribute] == Filter::Type_Include)
 			cmd += L"-attr +(";

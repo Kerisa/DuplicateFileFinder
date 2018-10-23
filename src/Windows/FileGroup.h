@@ -40,6 +40,7 @@ struct Filter
         Attrib_System   = FILE_ATTRIBUTE_SYSTEM,
         Attrib_Hide     = FILE_ATTRIBUTE_HIDDEN,
         Attrib_Archive  = FILE_ATTRIBUTE_ARCHIVE,
+        Attrib_Normal   = FILE_ATTRIBUTE_NORMAL,
     };
 
     std::array<int, RuleSwitchEnd>   Switch;
