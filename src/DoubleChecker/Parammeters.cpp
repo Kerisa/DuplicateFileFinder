@@ -231,8 +231,8 @@ bool Parameters::SetupFileList(const std::wstring & path, std::wstring& error)
                 ++fr.mSuffixOffset;
             fr.mNameOffset = PathFindFileName(parts[0].c_str()) - parts[0].c_str();
 
-            fr.mFileSize = _wtoi(parts[1].c_str());
-            fr.mLastWriteTime = _wtoi(parts[2].c_str());
+            fr.mFileSize = _wtoll(parts[1].c_str());
+            fr.mLastWriteTime = _wtoll(parts[2].c_str());
         }
     }
 

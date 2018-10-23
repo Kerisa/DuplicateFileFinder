@@ -15,9 +15,6 @@ bool IsFileMatch(WIN32_FIND_DATA* pwfd, Parameters& param)
     if (size < param.mSizeLow || size > param.mSizeHigh)
         return false;
 
-    // just for test
-    assert(!(pwfd->dwFileAttributes & FILE_ATTRIBUTE_NORMAL));
-
     bool attrMatch = false;
     if (param.mAttrib & Parameters::ARCHIVE)
         attrMatch |= !!(pwfd->dwFileAttributes & FILE_ATTRIBUTE_ARCHIVE);
@@ -27,7 +24,9 @@ bool IsFileMatch(WIN32_FIND_DATA* pwfd, Parameters& param)
         attrMatch |= !!(pwfd->dwFileAttributes & FILE_ATTRIBUTE_HIDDEN);
     if (param.mAttrib & Parameters::READONLY)
         attrMatch |= !!(pwfd->dwFileAttributes & FILE_ATTRIBUTE_READONLY);
-    
+    if (param.mAttrib & Parameters::NORMAL)
+        attrMatch |= !!(pwfd->dwFileAttributes & FILE_ATTRIBUTE_NORMAL);
+
     if (param.mIncludeAttr ^ attrMatch)
         return false;
 

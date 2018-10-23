@@ -20,7 +20,7 @@ bool GroupCompare(std::vector<std::set<const FileRecord*>>& left, vector<vector<
         {
             for (auto fr = left[lg].begin(); fr != left[lg].end(); ++fr)
             {
-                if ((*fr)->mPath == rg[0])
+                if (!_wcsicmp((*fr)->mPath.c_str(), rg[0].c_str()))
                 {
                     curLeft = &left[lg];
                     found = true;
@@ -39,7 +39,7 @@ bool GroupCompare(std::vector<std::set<const FileRecord*>>& left, vector<vector<
             bool found = false;
             for (auto it = curLeft->begin(); it != curLeft->end() && !found; ++it)
             {
-                if ((*it)->mPath == fr)
+                if (!_wcsicmp((*it)->mPath.c_str(), fr.c_str()))
                     found = true;
             }
             if (!found)

@@ -13,28 +13,29 @@ wstring Parameters::Usage()
 {
     return
         LR"(finder.exe path <options>
-options:
--type +/-(type1,type2,...)
-    include or exclude matched file suffix
+    options:
+    -type +/-(type1,type2,...)
+        include or exclude matched file suffix
 
--size (size1:size2)
-    include file size between size1 and size2
-    (size1:) for equal or larger than size1, (:size2) for equal or less than size2
-    suffix of size:
-        empty for Bytes
-        'k' : for Kilobytes
-        'm' : for Megabytes
-        'g' : for Gigabytes
+    -size (size1:size2)
+        include file size between size1 and size2
+        (size1:) for equal or larger than size1, (:size2) for equal or less than size2
+        suffix of size:
+            empty for Bytes
+            'k' : for Kilobytes
+            'm' : for Megabytes
+            'g' : for Gigabytes
 
--attr +/-[rhsa]
-    include or exclude matched file attributes
-    '+' : for include
-    '-' : for exclude
+    -attr +/-[rhsan]
+        include or exclude matched file attributes
+        '+' : for include
+        '-' : for exclude
 
-    'r' : for read-only
-    'h' : for hidden
-    's' : for system
-    'a' : for archive
+        'r' : for read-only
+        'h' : for hidden
+        's' : for system
+        'a' : for archive
+        'n' : for normal, n is valid only when used alone
 
 eg:
     finder c:\\windows -type +(dll,ini) -size (500k:5m) -attr +s
@@ -44,12 +45,16 @@ eg:
 
 bool Parameters::ParseCommand(const vector<wstring>& cmd, wstring& error)
 {
+    Reset();
+
     if (cmd.size() < 1)
     {
         error = L"Missing path";
         return false;
     }
 
+    TCHAR bbb[1024];
+    GetFullPathName(cmd[0].c_str(), 1024, bbb, NULL);
     mSearchPath.clear();
     DWORD attr = GetFileAttributes(cmd[0].c_str());
     if (attr == INVALID_FILE_ATTRIBUTES || !(attr & FILE_ATTRIBUTE_DIRECTORY))
@@ -67,18 +72,39 @@ bool Parameters::ParseCommand(const vector<wstring>& cmd, wstring& error)
     {
         if (cmd[i] == L"-type")
         {
+            if (mFoundOptionType)
+            {
+                error = L"Multi -type specified";
+                return false;
+            }
+
             if (!ParseType(cmd, i, error))
                 return false;
+            mFoundOptionType = true;
         }
         else if (cmd[i] == L"-size")
         {
+            if (mFoundOptionSize)
+            {
+                error = L"Multi -size specified";
+                return false;
+            }
+
             if (!ParseSize(cmd, i, error))
                 return false;
+            mFoundOptionSize = true;
         }
         else if (cmd[i] == L"-attr")
         {
+            if (mFoundOptionAttr)
+            {
+                error = L"Multi -attr specified";
+                return false;
+            }
+
             if (!ParseAttr(cmd, i, error))
                 return false;
+            mFoundOptionAttr = true;
         }
         else
         {
@@ -88,6 +114,21 @@ bool Parameters::ParseCommand(const vector<wstring>& cmd, wstring& error)
         }
     }
     return true;
+}
+
+void Parameters::Reset()
+{
+    mFoundOptionType = false;
+    mFoundOptionSize = false;
+    mFoundOptionAttr = false;
+
+    mSearchPath.clear();
+    mTypeList.clear();
+    mSizeLow = 0;
+    mSizeHigh = (uint64_t)-1;
+    mAttrib = NONE;
+    mIncludeType = false;
+    mIncludeAttr = false;
 }
 
 bool Parameters::ParseType(const std::vector<std::wstring>& cmd, size_t & index, std::wstring& error)
@@ -204,7 +245,7 @@ bool Parameters::ParseAttr(const std::vector<std::wstring>& cmd, size_t & index,
 
     mIncludeAttr = cmd[index + 1][0] == L'+';
 
-    wregex pattern(L"(\\([rhsa]+\\))");
+    wregex pattern(L"(\\([rhsan]+\\))");
     wsmatch match;
     wstring sub = cmd[index + 1].substr(1);
     if (!regex_match(sub, match, pattern))
@@ -223,10 +264,17 @@ bool Parameters::ParseAttr(const std::vector<std::wstring>& cmd, size_t & index,
         case L'r': mAttrib |= Parameters::READONLY; break;
         case L'h': mAttrib |= Parameters::HIDDEN; break;
         case L's': mAttrib |= Parameters::SYSTEM; break;
+        case L'n': mAttrib |= Parameters::NORMAL; break;
         default: error = L"-attr: Invalid attribute '" + a; error += L"'"; return false;
         }
     }
     assert(mAttrib != 0);
+
+    if ((mAttrib & Parameters::NORMAL) && mAttrib != Parameters::NORMAL)
+    {
+        error = L"`Normal` attribute can only used alone";
+        return false;
+    }
 
     index += 2;
     return true;

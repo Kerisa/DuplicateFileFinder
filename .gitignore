@@ -57,3 +57,7 @@ Release
 /bin/DoubleCheckerTest.exe
 /pdb/DoubleChecker.pdb
 /pdb/DoubleCheckerTest.pdb
+/bin/Windows.exe
+/bin/Windows_d.exe
+/pdb/Windows.pdb
+/pdb/Windows_d.pdb

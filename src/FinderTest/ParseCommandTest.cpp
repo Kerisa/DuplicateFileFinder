@@ -33,19 +33,19 @@ void ParseCommandTest::TestCase_Path()
     ret = param.ParseCommand(vector<wstring>{ L"c:\\windows" });
     Assert(ret && param.mSearchPath == L"c:\\windows");
 
-    ret = param.ParseCommand(vector<wstring>{ L"..\\..\\test\\testFolder1" });
+    ret = param.ParseCommand(vector<wstring>{ L"..\\test\\testFolder1" });
     Assert(ret);
 
-    ret = param.ParseCommand(vector<wstring>{ L"..\\..\\test\\testFolder1\\" });
+    ret = param.ParseCommand(vector<wstring>{ L"..\\test\\testFolder1\\" });
     Assert(ret);
 
-    ret = param.ParseCommand(vector<wstring>{ L"..\\..\\test\\NotExistFolder\\" });
+    ret = param.ParseCommand(vector<wstring>{ L"..\\test\\NotExistFolder\\" });
     Assert(!ret);
 
-    ret = param.ParseCommand(vector<wstring>{ L"..\\..\\test\\NotExistFile" });
+    ret = param.ParseCommand(vector<wstring>{ L"..\\test\\NotExistFile" });
     Assert(!ret);
 
-    ret = param.ParseCommand(vector<wstring>{ L"..\\..\\test\\ExistEmptyFile" });
+    ret = param.ParseCommand(vector<wstring>{ L"..\\test\\ExistEmptyFile" });
     Assert(!ret);
 }
 
@@ -246,6 +246,12 @@ void ParseCommandTest::TestCase_Attr()
     Assert(param.mAttrib == (Parameters::ARCHIVE | Parameters::READONLY));
 
 
+    ret = param.ParseCommand(vector<wstring>{ L".", L"-attr", L"+(n)" });
+    Assert(ret);
+    Assert(param.mIncludeAttr);
+    Assert(param.mAttrib == (Parameters::NORMAL));
+
+
     ret = param.ParseCommand(vector<wstring>{ L".", L"-attr", L"+()" });
     Assert(!ret);
 
@@ -262,6 +268,9 @@ void ParseCommandTest::TestCase_Attr()
     Assert(!ret);
 
     ret = param.ParseCommand(vector<wstring>{ L".", L"-attr", L"-(avs)" });
+    Assert(!ret);
+
+    ret = param.ParseCommand(vector<wstring>{ L".", L"-attr", L"-(an)" });
     Assert(!ret);
 }
 

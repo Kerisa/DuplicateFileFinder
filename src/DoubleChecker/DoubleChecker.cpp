@@ -37,7 +37,8 @@ int _tmain(int argc, TCHAR** argv)
 
     for (size_t i = 0; i < list.size(); ++i)
     {
-        cout << "group " << i << ":\n-------------------------\n";
+        //cout << "group " << i << ":\n-------------------------\n";
+		cout << "*\n";
         for (auto& fr : list[i])
         {
             int n = WideCharToMultiByte(CP_UTF8, NULL, fr->mPath.c_str(), -1, NULL, NULL, NULL, NULL);

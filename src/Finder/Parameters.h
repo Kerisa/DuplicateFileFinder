@@ -22,6 +22,7 @@ public:
         HIDDEN      = 0x2,
         SYSTEM      = 0x4,
         ARCHIVE     = 0x8,
+        NORMAL      = 0x10,
     };
 
     std::wstring                            mSearchPath;
@@ -37,7 +38,13 @@ public:
     bool ParseCommand(const std::vector<std::wstring>& cmd, std::wstring& error = std::wstring());
 
 private:
+    void Reset();
+
     bool ParseType(const std::vector<std::wstring>& cmd, size_t& index, std::wstring& error);
     bool ParseSize(const std::vector<std::wstring>& cmd, size_t& index, std::wstring& error);
     bool ParseAttr(const std::vector<std::wstring>& cmd, size_t& index, std::wstring& error);
+
+    bool mFoundOptionType{ false };
+    bool mFoundOptionSize{ false };
+    bool mFoundOptionAttr{ false };
 };
