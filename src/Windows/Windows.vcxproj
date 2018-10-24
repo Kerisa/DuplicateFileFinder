@@ -78,19 +78,17 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\include\Common.cpp" />
+    <ClCompile Include="..\..\include\crc32\crc.cpp" />
     <ClCompile Include="..\..\include\utls\utility.cpp" />
-    <ClCompile Include="crc32.cpp" />
     <ClCompile Include="FileGroup.cpp" />
     <ClCompile Include="functions.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="sha1.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="crc32.h" />
+    <ClInclude Include="..\..\include\crc32\crc.h" />
     <ClInclude Include="FileGroup.h" />
     <ClInclude Include="functions.h" />
     <ClInclude Include="resource.h" />
-    <ClInclude Include="sha1.h" />
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="Windows.exe.manifest" />

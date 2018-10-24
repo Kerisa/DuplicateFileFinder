@@ -2,6 +2,7 @@
 #include <iterator>
 #include <vector>
 #include <string>
+#include <thread>
 #include <Windows.h>
 #include <WindowsX.h>
 #include <Commdlg.h>
@@ -42,7 +43,7 @@ DWORD WINAPI    Thread          (PVOID pvoid);
 DWORD WINAPI    ThreadHashOnly  (PVOID pvoid);
 LRESULT CALLBACK  MainWndProc     (HWND, UINT, WPARAM, LPARAM);
 BOOL  CALLBACK  FilterDialogProc(HWND, UINT, WPARAM, LPARAM);
-
+std::vector<int> GetListViewCheckedItems();
 
 ATOM MyRegisterClass(HINSTANCE hInstance)
 {
@@ -211,9 +212,25 @@ static bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
         return TRUE;
     }
 
-    case IDM_HASHALL:
-        
+    case IDM_HASHALL: {
+        auto list = GetListViewCheckedItems();
+        std::thread([list]() {
+            if (!list.empty())
+            {
+                for (auto i : list)
+                {
+                    TCHAR msg[128];
+                    swprintf_s(msg, _countof(msg), L"正在计算 CRC32...(%d/%d)", i + 1, list.size());
+                    UpdateStatusBar(0, msg);
+
+                    g_DataBase[i].fi->mCRC = GetFileCrc(g_DataBase[i].fi->mPath);
+                    SendMessage(g_hList, LVM_REDRAWITEMS, i, i);
+                }
+                UpdateStatusBar(0, L"CRC32 计算完成");
+            }
+        }).detach();
         return TRUE;
+    }
 
     case IDM_SELALL:
     case IDM_USELALL:
@@ -222,6 +239,28 @@ static bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
                 id == IDM_SELALL ? CHECKBOX_SECLECTED : CHECKBOX_UNSECLECTED;
         UpdateStatusBar(1, 0);
         InvalidateRect(g_hList, NULL, TRUE);
+        return TRUE;
+
+    case IDM_SELECT_DUP_IN_GROUP:
+        for (size_t i = 0; i < g_DataBase.size(); )
+        {
+            g_DataBase[i].checkstate = CHECKBOX_UNSECLECTED;
+            SendMessage(g_hList, LVM_REDRAWITEMS, i, i);
+            if (!g_DataBase[i].mFistInGroup)
+            {
+                ++i;
+                continue;
+            }
+
+            size_t j = i + 1;
+            while (j < g_DataBase.size() && !g_DataBase[j].mFistInGroup)
+            {
+                g_DataBase[j].checkstate = CHECKBOX_SECLECTED;
+                SendMessage(g_hList, LVM_REDRAWITEMS, j, j);
+                ++j;
+            }
+            i = j;
+        }
         return TRUE;
 
     //----------------------------------------------------------------------------------------------------
@@ -353,6 +392,17 @@ static std::vector<int> GetListViewSelectedItems()
     return indeies;
 }
 
+static std::vector<int> GetListViewCheckedItems()
+{
+    vector<int> ret;
+
+    for (size_t i = 0; i != g_DataBase.size(); ++i)
+        if (g_DataBase[i].checkstate == CHECKBOX_SECLECTED)
+            ret.push_back(i);
+
+    return ret;
+}
+
 static void FillListView(NMLVDISPINFO* pdi, LVITEM* pItem)
 {
     int itemid = pItem->iItem;
@@ -417,9 +467,12 @@ static void FillListView(NMLVDISPINFO* pdi, LVITEM* pItem)
             break;
         }
         case 5: { // hash
-            TCHAR text[32];
-            swprintf_s(text, _countof(text), L"%08x", pfi->mCRC);
-            wcscpy_s(pItem->pszText, pItem->cchTextMax, text);
+            if (pfi->mCRC != 0)
+            {
+                TCHAR text[32];
+                swprintf_s(text, _countof(text), L"%08x", pfi->mCRC);
+                wcscpy_s(pItem->pszText, pItem->cchTextMax, text);
+            }
             break;
         }
         default: break;
@@ -975,6 +1028,7 @@ DWORD WINAPI Thread(PVOID pvoid)
 
 		auto groups = Utility::Splite(wdata.data(), L"*");
 
+        g_DataBase2.clear();
 		g_DataBase2.reserve(groups.size());
 		for (size_t i = 0; i < groups.size(); ++i)
 		{

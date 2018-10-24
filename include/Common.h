@@ -20,3 +20,5 @@ public:
 };
 
 #define Assert(x) ((x) || (__debugbreak(), 0))
+
+uint32_t GetFileCrc(const std::wstring& path);

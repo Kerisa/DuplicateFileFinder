@@ -20,7 +20,6 @@ extern std::vector<DataBaseInfo> g_DataBase;
 std::wstring OpenFolder			(HWND hwnd);
 int  GetListViewCheckedCount    (HWND g_hList);
 BOOL InitListViewColumns        (HWND g_hList);
-bool IsValidHash                (int index);
 void SplitString                (const wchar_t *src,
                                  std::vector<std::wstring>& v,
                                  const wchar_t *key,

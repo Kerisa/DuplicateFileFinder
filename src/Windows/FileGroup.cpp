@@ -1,7 +1,6 @@
 
 
 #include "FileGroup.h"
-#include "crc32.h"
 #include <CommCtrl.h>
 #include <memory>
 

@@ -13,7 +13,6 @@
 #include <unordered_map>
 #include <vector>
 #include <Strsafe.h>
-#include "Sha1.h"
 #include "common.h"
 
 

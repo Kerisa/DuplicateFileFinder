@@ -2,11 +2,13 @@
 #pragma once
 
 #include <cassert>
+#include <fstream>
 #include <vector>
 #include "Common.h"
 #include "utls/utility.h"
 #include <Windows.h>
 #include <Shlwapi.h>
+#include "crc32/crc.h"
 
 
 #pragma comment(lib, "Shlwapi.lib")
@@ -54,4 +56,40 @@ bool FileRecord::FromUTF16(const std::wstring& str, FileRecord& fr)
     }
 
     return true;
+}
+
+
+
+uint32_t GetFileCrc(const std::wstring& path)
+{
+    ifstream in(path, ios::binary);
+    if (!in.is_open())
+    {
+        assert("cannot open file" && 0);
+        return 0;
+    }
+
+    in.seekg(0, ios::end);
+    ifstream::streampos length = in.tellg();
+    in.seekg(0, ios::beg);
+
+    char buf[1024] = { 0 };
+    uint32_t crc = 0;
+    while (length > 0)
+    {
+        if (length >= sizeof(buf))
+        {
+            in.read(buf, sizeof(buf));
+            crc = CRC32((unsigned char*)buf, crc, sizeof(buf));
+            length -= sizeof(buf);
+        }
+        else
+        {
+            in.read(buf, length);
+            crc = CRC32((unsigned char*)buf, crc, length);
+            break;
+        }
+    }
+    in.close();
+    return crc;
 }
