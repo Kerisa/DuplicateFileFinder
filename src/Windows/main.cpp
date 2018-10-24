@@ -169,8 +169,10 @@ static bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
     case IDM_EXPLORER:
         if (iClickItem < g_DataBase.size() && iClickItem >= 0)
         {
-            ListView_GetItemText(g_hList, iClickItem, 1, szBuffer, _countof(szBuffer));
-            ShellExecute(0, 0, szBuffer, 0, 0, SW_SHOW);
+            wstring cmd(L"/select,\"");
+            cmd += g_DataBase[iClickItem].fi->mPath.c_str();
+            cmd += L"\"";
+            ShellExecute(0, 0, L"explorer.exe", cmd.c_str(), 0, SW_SHOW);
         }
         return TRUE;
 
@@ -336,13 +338,201 @@ static void Cls_OnSize(HWND hwnd, UINT state, int cx, int cy)
 	MoveWindow(g_hList, 0, 0, cx, cy - sbrc.bottom + sbrc.top, TRUE);
 }
 
+static std::vector<int> GetListViewSelectedItems()
+{
+    int count = 0;
+    int total = ListView_GetSelectedCount(g_hList);
+    vector<int> indeies;
+    for (int i = 0; count < total && g_DataBase.size(); ++i)
+    {
+        DWORD state = SendMessage(g_hList, LVM_GETITEMSTATE, i, LVIS_SELECTED);
+        if (state & LVIS_SELECTED)
+        {
+            indeies.push_back(i);
+            ++count;
+        }
+    }
+    return indeies;
+}
+
+static void FillListView(NMLVDISPINFO* pdi, LVITEM* pItem)
+{
+    int itemid = pItem->iItem;
+    if (itemid >= g_DataBase.size())
+        return;
+
+    pdi->item.state = INDEXTOSTATEIMAGEMASK(g_DataBase[itemid].checkstate);
+    pdi->item.stateMask = LVIS_STATEIMAGEMASK;
+
+    FileRecord* pfi = g_DataBase[itemid].fi;
+    if (pItem->mask & LVIF_TEXT)
+    {
+        TCHAR Buffer[128] = { 0 };
+
+        switch (pItem->iSubItem)
+        {
+        case 0: // name
+            wcscpy_s(pItem->pszText, pItem->cchTextMax, g_DataBase[itemid].fi->mPath.substr(g_DataBase[itemid].fi->mNameOffset).c_str());
+            break;
+
+        case 1: // path
+            wcscpy_s(pItem->pszText, pItem->cchTextMax, g_DataBase[itemid].fi->mPath.substr(0, g_DataBase[itemid].fi->mNameOffset).c_str());
+            break;
+
+        case 2: // size
+            if (g_DataBase[itemid].fi->mFileSize > 966367641ull)		// 约为0.9GB
+                StringCbPrintf(Buffer, 120, TEXT("%.2lf GB"), g_DataBase[itemid].fi->mFileSize / (double)0x40000000);
+            else if (g_DataBase[itemid].fi->mFileSize > 943718)	// 0.9MB
+                StringCbPrintf(Buffer, 120, TEXT("%.2lf MB"), g_DataBase[itemid].fi->mFileSize / (double)0x100000);
+            else if (g_DataBase[itemid].fi->mFileSize > 921)        // 0.9KB
+                StringCbPrintf(Buffer, 120, TEXT("%.2lf KB"), g_DataBase[itemid].fi->mFileSize / (double)0x400);
+            else
+                StringCbPrintf(Buffer, 120, TEXT("%d B"), g_DataBase[itemid].fi->mFileSize);
+
+            wcscpy_s(pItem->pszText, pItem->cchTextMax, Buffer);
+            break;
+
+        case 3: {// create time
+            SYSTEMTIME st;
+            FILETIME tmp, ft;
+            tmp.dwHighDateTime = (DWORD)(pfi->mLastWriteTime >> 32);
+            tmp.dwLowDateTime = (DWORD)pfi->mLastWriteTime;
+            FileTimeToLocalFileTime(&tmp, &ft);
+            FileTimeToSystemTime(&ft, &st);
+            StringCbPrintf(Buffer, 120, TEXT("%04d/%02d/%02d %02d:%02d:%02d"),
+                st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
+
+            wcscpy_s(pItem->pszText, pItem->cchTextMax, Buffer);
+            break;
+        }
+        case 4: {// last write time
+            SYSTEMTIME st;
+            FILETIME tmp, ft;
+            tmp.dwHighDateTime = (DWORD)(pfi->mLastWriteTime >> 32);
+            tmp.dwLowDateTime = (DWORD)pfi->mLastWriteTime;
+            FileTimeToLocalFileTime(&tmp, &ft);
+            FileTimeToSystemTime(&ft, &st);
+            StringCbPrintf(Buffer, 120, TEXT("%04d/%02d/%02d %02d:%02d:%02d"),
+                st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
+
+            wcscpy_s(pItem->pszText, pItem->cchTextMax, Buffer);
+            break;
+        }
+        case 5: // hash
+            wchar_t res[42];
+            static_cast<SHA_1*>(0)->ToHexString(
+                g_DataBase[itemid].hr.b, res, 42 * sizeof(wchar_t));
+
+            wcscpy_s(pItem->pszText, pItem->cchTextMax, res);
+            break;
+
+        default: break;
+        }
+    }
+}
+
+static int ListViewCustomDraw(LPNMLVCUSTOMDRAW lpNMCustomDraw)
+{
+    if (lpNMCustomDraw->nmcd.dwItemSpec < g_DataBase.size() && g_DataBase[lpNMCustomDraw->nmcd.dwItemSpec].mFistInGroup)
+        lpNMCustomDraw->clrText = RGB(0, 0, 0);
+    else
+        lpNMCustomDraw->clrText = RGB(128, 128, 128);
+
+    return CDRF_NOTIFYITEMDRAW;
+}
+
+static LRESULT Cls_OnListViewNotify(HWND hDlg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
+{
+    bHandled = FALSE;
+
+    if (((NMHDR*)lParam)->idFrom != ID_LISTVIEW)
+        return FALSE;
+
+    switch (((NMHDR*)lParam)->code)
+    {
+    case LVN_KEYDOWN:
+        switch (((LPNMLVKEYDOWN)lParam)->wVKey)
+        {
+        case VK_RETURN:
+            iClickItem = ListView_GetSelectionMark(g_hList);
+            SendMessage(hDlg, WM_COMMAND, IDM_OPENFILE, 0);
+            bHandled = TRUE;
+            return TRUE;
+
+        case VK_DELETE:
+            iClickItem = ListView_GetSelectionMark(g_hList);
+            SendMessage(hDlg, WM_COMMAND, IDM_DELETE, 0);
+            bHandled = TRUE; 
+            return TRUE;
+
+            // 使用空格键切换checkbox
+        case VK_SPACE: {
+            auto indeies = GetListViewSelectedItems();
+            for (auto i : indeies)
+            {
+                g_DataBase[i].checkstate ^= 0x3;
+                SendMessage(g_hList, LVM_REDRAWITEMS, i, i);
+            }
+            UpdateStatusBar(1, nullptr);
+            bHandled = TRUE;
+            return TRUE;
+        }
+        }
+        break;
+
+    case NM_CLICK: {
+        NMITEMACTIVATE* ia = (NMITEMACTIVATE*)lParam;
+        LVHITTESTINFO lhti;
+        lhti.pt = ia->ptAction;
+        SendMessage(g_hList, LVM_SUBITEMHITTEST, 0, (LPARAM)&lhti);
+
+        if (lhti.flags == LVHT_ONITEMSTATEICON && lhti.iSubItem == 0)
+        {
+            g_DataBase[lhti.iItem].checkstate ^= 0x3;
+            SendMessage(g_hList, LVM_REDRAWITEMS, lhti.iItem, lhti.iItem);
+        }
+
+        UpdateStatusBar(1, nullptr);
+        bHandled = TRUE;
+        return TRUE;
+    }
+
+    case NM_CUSTOMDRAW: {
+        bHandled = TRUE;
+        return ListViewCustomDraw((LPNMLVCUSTOMDRAW)lParam);
+    }
+
+    case NM_RCLICK:
+    case NM_DBLCLK: {
+        LVHITTESTINFO lvh;
+        GetCursorPos(&lvh.pt);
+        ScreenToClient(hDlg, &lvh.pt);
+        iClickItem = SendMessage(g_hList, LVM_SUBITEMHITTEST, 0, (LPARAM)&lvh);
+        if (((NMHDR*)lParam)->code == NM_DBLCLK)
+        {
+            SendMessage(hDlg, WM_COMMAND, IDM_OPENFILE, 0);
+        }
+        else
+        {
+            GetCursorPos(&lvh.pt);
+            TrackPopupMenu(g_hMenu, TPM_RIGHTBUTTON, lvh.pt.x, lvh.pt.y, 0, hDlg, NULL);
+        }
+        break;
+    }
+
+    case LVN_GETDISPINFO:
+    {
+        NMLVDISPINFO *pdi = reinterpret_cast<NMLVDISPINFO*>(lParam);
+        LVITEMW *pItem = &pdi->item;
+        FillListView(pdi, pItem);
+    }
+    }
+
+    return FALSE;
+}
 
 LRESULT CALLBACK MainWndProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam)
 {
-    static int CurCtlIdx;
-    
-    LVHITTESTINFO lvh;
-
     switch (Msg)
     {
     case WM_COMMAND:
@@ -365,173 +555,13 @@ LRESULT CALLBACK MainWndProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam)
         Cls_OnCreate(hDlg, (LPCREATESTRUCT)lParam);
         break;
         
-    case WM_NOTIFY:
-        if (((NMHDR*)lParam)->idFrom == ID_LISTVIEW)
-        {
-            switch (((NMHDR*)lParam)->code)
-            {
-            case LVN_KEYDOWN:
-                switch (((LPNMLVKEYDOWN)lParam)->wVKey)
-                {
-                case VK_RETURN:
-                    iClickItem = ListView_GetSelectionMark(g_hList);
-                    SendMessage(hDlg, WM_COMMAND, IDM_OPENFILE, 0);
-                    return TRUE;
-
-                case VK_DELETE:
-                    iClickItem = ListView_GetSelectionMark(g_hList);
-                    SendMessage(hDlg, WM_COMMAND, IDM_DELETE, 0);
-                    return TRUE;
-
-                // 使用空格键切换checkbox
-				case VK_SPACE: {
-					LVHITTESTINFO lhti;
-					lhti.pt = POINT{ 1, 20 };
-					DWORD dw = SendMessage(g_hList, LVM_SUBITEMHITTEST, 0, (LPARAM)&lhti);
-					iClickItem = ListView_GetSelectionMark(g_hList);
-					int count = 0;
-					int iSelCount = ListView_GetSelectedCount(g_hList);
-					for (int i = lhti.iItem; count < iSelCount && ListView_IsItemVisible(g_hList, i); ++i)
-					{
-						DWORD state = SendMessage(g_hList, LVM_GETITEMSTATE, i, LVIS_SELECTED);
-						if (state & LVIS_SELECTED)
-						{
-							g_DataBase[i].checkstate ^= 0x3;
-							SendMessage(g_hList, LVM_REDRAWITEMS, i, i);
-							++count;
-						}
-					}
-					UpdateStatusBar(1, nullptr);
-					break;
-				}
-                }
-                break;
-
-			case NM_CLICK: {
-				NMITEMACTIVATE* ia = (NMITEMACTIVATE*)lParam;
-				LVHITTESTINFO lhti;
-				lhti.pt = ia->ptAction;
-				DWORD dw = SendMessage(g_hList, LVM_SUBITEMHITTEST, 0, (LPARAM)&lhti);
-
-				if (lhti.flags == LVHT_ONITEMSTATEICON && lhti.iSubItem == 0)
-				{
-					g_DataBase[lhti.iItem].checkstate ^= 0x3;
-					SendMessage(g_hList, LVM_REDRAWITEMS, lhti.iItem, lhti.iItem);
-				}
-
-				UpdateStatusBar(1, nullptr);
-				break;
-			}
-
-			case NM_CUSTOMDRAW: {
-				LPNMLVCUSTOMDRAW lpNMCustomDraw = (LPNMLVCUSTOMDRAW)lParam;
-				if (lpNMCustomDraw->nmcd.dwItemSpec < g_DataBase.size() && g_DataBase[lpNMCustomDraw->nmcd.dwItemSpec].mFistInGroup)
-					lpNMCustomDraw->clrText = RGB(0, 0, 0);
-				else
-					lpNMCustomDraw->clrText = RGB(128, 128, 128);
-				return CDRF_NOTIFYITEMDRAW;
-				break;
-			}
-
-            case NM_RCLICK:
-            case NM_DBLCLK:
-                GetCursorPos(&lvh.pt);
-                ScreenToClient(hDlg, &lvh.pt);
-                iClickItem =  SendMessage(g_hList, LVM_SUBITEMHITTEST, 0, (LPARAM)&lvh);
-                if (((NMHDR*)lParam)->code == NM_DBLCLK)
-                {
-                    SendMessage(hDlg, WM_COMMAND, IDM_OPENFILE, 0);
-                }
-                else
-                {
-                    GetCursorPos(&lvh.pt);
-                    TrackPopupMenu(g_hMenu, TPM_RIGHTBUTTON, lvh.pt.x, lvh.pt.y, 0, hDlg, NULL);
-                }
-                break;
-            case LVN_GETDISPINFO:
-            {
-                NMLVDISPINFO *pdi = reinterpret_cast<NMLVDISPINFO*>(lParam);
-                LVITEMW *pItem = &pdi->item;
-
-                int itemid = pItem->iItem;
-                if (itemid >= g_DataBase.size())
-                    break;
-
-                pdi->item.state = INDEXTOSTATEIMAGEMASK(g_DataBase[itemid].checkstate);
-                pdi->item.stateMask = LVIS_STATEIMAGEMASK;
-
-                FileRecord* pfi = g_DataBase[itemid].fi;
-				//pdi->item.iGroupId = g_DataBase[itemid].mGroupID;
-				//ListView_SetTextBkColor(g_hList, RGB(192, 0, 0));
-				//ListView_SetBkColor(g_hList, RGB(0, 192, 0));
-                if (pItem->mask & LVIF_TEXT)
-                {
-                    TCHAR Buffer[128] = { 0 };
-
-                    switch (pItem->iSubItem)
-                    {
-                    case 0: // name
-                        wcscpy_s(pItem->pszText, pItem->cchTextMax, g_DataBase[itemid].fi->mPath.c_str());
-                        break;
-
-                    case 1: // path
-                        wcscpy_s(pItem->pszText, pItem->cchTextMax, g_DataBase[itemid].fi->mPath.c_str());
-                        break;
-
-                    case 2: // size
-                        if (g_DataBase[itemid].fi->mFileSize > 966367641ull)		// 约为0.9GB
-                            StringCbPrintf(Buffer, 120, TEXT("%.2lf GB"), g_DataBase[itemid].fi->mFileSize / (double)0x40000000);
-                        else if (g_DataBase[itemid].fi->mFileSize > 943718)	// 0.9MB
-                            StringCbPrintf(Buffer, 120, TEXT("%.2lf MB"), g_DataBase[itemid].fi->mFileSize / (double)0x100000);
-                        else if (g_DataBase[itemid].fi->mFileSize > 921)        // 0.9KB
-                            StringCbPrintf(Buffer, 120, TEXT("%.2lf KB"), g_DataBase[itemid].fi->mFileSize / (double)0x400);
-                        else
-                            StringCbPrintf(Buffer, 120, TEXT("%d B"), g_DataBase[itemid].fi->mFileSize);
-
-                        wcscpy_s(pItem->pszText, pItem->cchTextMax, Buffer);
-                        break;
-
-					case 3: {// create time
-						SYSTEMTIME st;
-						FILETIME tmp, ft;
-						tmp.dwHighDateTime = (DWORD)(pfi->mLastWriteTime >> 32);
-						tmp.dwLowDateTime = (DWORD)pfi->mLastWriteTime;
-						FileTimeToLocalFileTime(&tmp, &ft);
-						FileTimeToSystemTime(&ft, &st);
-						StringCbPrintf(Buffer, 120, TEXT("%04d/%02d/%02d %02d:%02d:%02d"),
-							st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
-
-						wcscpy_s(pItem->pszText, pItem->cchTextMax, Buffer);
-						break;
-					}
-					case 4: {// last write time
-						SYSTEMTIME st;
-						FILETIME tmp, ft;
-						tmp.dwHighDateTime = (DWORD)(pfi->mLastWriteTime >> 32);
-						tmp.dwLowDateTime = (DWORD)pfi->mLastWriteTime;
-						FileTimeToLocalFileTime(&tmp, &ft);
-						FileTimeToSystemTime(&ft, &st);
-						StringCbPrintf(Buffer, 120, TEXT("%04d/%02d/%02d %02d:%02d:%02d"),
-							st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
-
-						wcscpy_s(pItem->pszText, pItem->cchTextMax, Buffer);
-						break;
-					}
-                    case 5: // hash
-                        wchar_t res[42];
-                        static_cast<SHA_1*>(0)->ToHexString(
-                            g_DataBase[itemid].hr.b, res, 42 * sizeof(wchar_t));
-
-                        wcscpy_s(pItem->pszText, pItem->cchTextMax, res);
-                        break;
-
-                    default: break;
-                    }
-                }
-            }
-            }
-        }
+    case WM_NOTIFY: {
+        BOOL bHandled = FALSE;
+        LRESULT ret = Cls_OnListViewNotify(hDlg, wParam, lParam, bHandled);
+        if (bHandled)
+            return ret;
         break;
+    }
 
     default:
         break;
@@ -830,8 +860,8 @@ DWORD WINAPI Thread(PVOID pvoid)
 		}
 
 
-        g_DataBase.clear();
         ListView_SetItemCount(g_hList, 0);
+        g_DataBase.clear();
 
 
 		findData.resize(cmds.size());
