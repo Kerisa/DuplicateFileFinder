@@ -6,6 +6,7 @@
 #include <WindowsX.h>
 #include <Commdlg.h>
 #include <CommCtrl.h>
+#include <sstream>
 #include "FileGroup.h"
 #include "functions.h"
 #include "resource.h"
@@ -70,7 +71,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     g_hInstance = hInstance;
 
     // 选择不同风格时似乎会影响listview和窗口的相对大小
-    HWND hWnd = CreateWindow(szAppName, szAppName, WS_CAPTION | WS_MINIMIZEBOX | WS_POPUPWINDOW,
+    HWND hWnd = CreateWindow(szAppName, szAppName, WS_OVERLAPPEDWINDOW,
         200, 100, ClientWndSize.x, ClientWndSize.y, nullptr, nullptr, hInstance, nullptr);
 
    if (!hWnd)
@@ -277,23 +278,34 @@ static bool Cls_OnCreate(HWND hDlg, LPCREATESTRUCT lpCreateStruct)
     // 设置菜单
     SetMenu(hDlg, LoadMenu(g_hInstance, MAKEINTRESOURCE(IDR_MENU2)));
 
-    // 初始化List View    大小在这里微调……
-    g_hList = CreateWindowEx(0, WC_LISTVIEW, NULL,
-                    LVS_REPORT | WS_CHILD | WS_VISIBLE | WS_BORDER | LVS_ALIGNTOP | LVS_OWNERDATA,
-                    0, 0, ClientWndSize.x-6, ClientWndSize.y-StatusBarHigh-61,
-                    hDlg, (HMENU)ID_LISTVIEW, (HINSTANCE)GetWindowLong(hDlg, GWL_HINSTANCE), NULL);
-    ListView_EnableGroupView(g_hList, TRUE);
-    ListView_SetExtendedListViewStyleEx(g_hList, 0, LVS_EX_GRIDLINES | LVS_EX_CHECKBOXES | LVS_EX_FULLROWSELECT);
-    if (!InitListViewColumns(g_hList))
-        assert(0);
-        
+	RECT rc;
+	GetClientRect(hDlg, &rc);
 
     // 初始化 Status Bar
-    g_hStatus = CreateStatusWindow(WS_CHILD | WS_VISIBLE, NULL, hDlg, ID_STATUSBAR);
-    StatusBarSetPart[0] = ClientWndSize.x * 4 / 5;
+	g_hStatus = CreateWindowEx(0, STATUSCLASSNAME, (PCTSTR)NULL, SBARS_SIZEGRIP | WS_CHILD | WS_VISIBLE,
+		0, 0, 0, 0, hDlg, (HMENU)NULL, g_hInstance, NULL);
+
+    StatusBarSetPart[0] = (rc.right - rc.left) * 4 / 5;
     StatusBarSetPart[1] = -1;
     SendMessage(g_hStatus, SB_SETPARTS, 2, (LPARAM)StatusBarSetPart);
 
+	RECT sbrc;
+	POINT lppt;
+	GetWindowRect(g_hStatus, &sbrc);
+	lppt.y = sbrc.top;
+	lppt.x = sbrc.right;
+	ScreenToClient(hDlg, &lppt);
+
+
+	// 初始化List View    大小在这里微调……
+	g_hList = CreateWindowEx(0, WC_LISTVIEW, NULL,
+		LVS_REPORT | WS_CHILD | WS_VISIBLE | WS_BORDER | LVS_ALIGNTOP | LVS_OWNERDATA,
+		0, 0, rc.right - rc.left, lppt.y,
+		hDlg, (HMENU)ID_LISTVIEW, (HINSTANCE)GetWindowLong(hDlg, GWL_HINSTANCE), NULL);
+	ListView_EnableGroupView(g_hList, TRUE);
+	ListView_SetExtendedListViewStyleEx(g_hList, 0, LVS_EX_GRIDLINES | LVS_EX_CHECKBOXES | LVS_EX_FULLROWSELECT);
+	if (!InitListViewColumns(g_hList))
+		assert(0);
     
     // 设置焦点
     SetFocus(GetDlgItem(hDlg, IDB_BROWSE));
@@ -316,6 +328,19 @@ static void Cls_OnSysCommand0(HWND hwnd, UINT cmd, int x, int y)
     }
 }
 
+static void Cls_OnSize(HWND hwnd, UINT state, int cx, int cy)
+{
+	RECT sbrc;
+	POINT lppt;
+	GetWindowRect(g_hStatus, &sbrc);
+	MoveWindow(g_hStatus, 0, cy - sbrc.bottom + sbrc.top, cx, sbrc.bottom - sbrc.top, TRUE);
+
+	lppt.y = sbrc.top;
+	lppt.x = sbrc.right;
+	ScreenToClient(hwnd, &lppt);
+	MoveWindow(g_hList, 0, 0, cx, lppt.y, TRUE);
+}
+
 
 LRESULT CALLBACK MainWndProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam)
 {
@@ -336,6 +361,10 @@ LRESULT CALLBACK MainWndProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam)
     case WM_SYSCOMMAND:
         Cls_OnSysCommand0(hDlg, (UINT)wParam, (int)(short)LOWORD(lParam), (int)(short)HIWORD(lParam));
         break;
+
+	case WM_SIZE:
+		Cls_OnSize(hDlg, (UINT)wParam, (int)(short)LOWORD(lParam), (int)(short)HIWORD(lParam));
+		break;
         
     case WM_CREATE:
         Cls_OnCreate(hDlg, (LPCREATESTRUCT)lParam);
@@ -373,6 +402,16 @@ LRESULT CALLBACK MainWndProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam)
                 UpdateStatusBar(1, nullptr);
                 break;
 
+			case NM_CUSTOMDRAW: {
+				LPNMLVCUSTOMDRAW lpNMCustomDraw = (LPNMLVCUSTOMDRAW)lParam;
+				if (lpNMCustomDraw->nmcd.dwItemSpec < g_DataBase.size() && g_DataBase[lpNMCustomDraw->nmcd.dwItemSpec].mFistInGroup)
+					lpNMCustomDraw->clrText = RGB(0, 0, 0);
+				else
+					lpNMCustomDraw->clrText = RGB(128, 128, 128);
+				return CDRF_NOTIFYITEMDRAW;
+				break;
+			}
+
             case NM_RCLICK:
             case NM_DBLCLK:
                 GetCursorPos(&lvh.pt);
@@ -401,6 +440,9 @@ LRESULT CALLBACK MainWndProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam)
                 pdi->item.stateMask = LVIS_STATEIMAGEMASK;
 
                 FileRecord* pfi = g_DataBase[itemid].fi;
+				//pdi->item.iGroupId = g_DataBase[itemid].mGroupID;
+				//ListView_SetTextBkColor(g_hList, RGB(192, 0, 0));
+				//ListView_SetBkColor(g_hList, RGB(0, 192, 0));
                 if (pItem->mask & LVIF_TEXT)
                 {
                     TCHAR Buffer[128] = { 0 };
@@ -483,7 +525,13 @@ static bool Cls_OnCommand_filter(HWND hDlg, int id, HWND hwndCtl, UINT codeNotif
     switch (id)
     {
     case IDOK:
-        UpdateFilterConfig(hDlg, g_Filter);
+        if (!IsDlgButtonChecked(hDlg, IDC_CHECK_NAME) && !IsDlgButtonChecked(hDlg, IDC_CHECK_SIZE) &&
+            !IsDlgButtonChecked(hDlg, IDC_CHECK_DATE) && !IsDlgButtonChecked(hDlg, IDC_CHECK_DATA))
+        {
+            MessageBox(hDlg, L"至少选择一个匹配条件", szAppName, MB_ICONWARNING);
+            return TRUE;
+        }
+        UpdateFilterConfig(hDlg, g_Filter);        
 
     case IDCANCEL:
         EndDialog(hDlg, 0);
@@ -586,38 +634,7 @@ static bool Cls_OnInitDialog_filter(HWND hDlg, HWND hwndFocus, LPARAM lParam)
 
     g_hDlgFilter = hDlg;
 
-    hCombo = GetDlgItem(hDlg, IDC_COMBO_DATAFRONT);
-    SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"最前");
-    SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"最后");
-
-    //hCombo = GetDlgItem(hDlg, IDC_COMBO_DATAUNIT);
-    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"B");
-    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"KB");
-    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"MB");
-    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"GB");
-    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"TB");
-    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"PB");
-    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"EB");
-
-    //hCombo = GetDlgItem(hDlg, IDC_COMBO_SIZEUNIT);
-    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"B");
-    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"KB");
-    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"MB");
-    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"GB");
-    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"TB");
-    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"PB");
-    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"EB");
-
-    //hCombo = GetDlgItem(hDlg, IDC_COMBO_SUBDIR);
-    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"所有子文件夹");
-    //SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"当前文件夹");
-    //for (int i=1; i<100; ++i)
-    //{
-    //    StringCchPrintf(Buffer, MAX_PATH, L"%d", i);
-    //    SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)Buffer);
-    //}
-    //SetDlgItemText(hDlg, IDC_COMBO_SUBDIR, L"所有子文件夹");
-
+    // 初始化文件类型下拉框
     hCombo = GetDlgItem(hDlg, IDC_COMBO_TYPEINC);
     hCombo1 = GetDlgItem(hDlg, IDC_COMBO_TYPEIGN);
     for (UINT i=IDS_STRING103; i<=IDS_STRING107; ++i)
@@ -627,6 +644,7 @@ static bool Cls_OnInitDialog_filter(HWND hDlg, HWND hwndFocus, LPARAM lParam)
         SendMessage(hCombo1, CB_ADDSTRING, 0, (LPARAM)Buffer);
     }
 
+    // 初始化大小单位下拉框
     hCombo = GetDlgItem(hDlg, IDC_COMBO_SEARCH_SIZE_UNIT1);
     hCombo1 = GetDlgItem(hDlg, IDC_COMBO_SEARCH_SIZE_UNIT2);
     for (UINT i = 0; i < _countof(szUnit); ++i)
@@ -637,8 +655,10 @@ static bool Cls_OnInitDialog_filter(HWND hDlg, HWND hwndFocus, LPARAM lParam)
     SendMessage(hCombo, CB_SETCURSEL, 0, 0);
     SendMessage(hCombo1, CB_SETCURSEL, 0, 0);
 
-    SendMessage(hDlg, WM_COMMAND, IDC_CHECK_NAME, 0);
-    SendMessage(hDlg, WM_COMMAND, IDC_CHECK_SIZE, 0);
+    // 设置默认匹配规则
+    SendMessage(hDlg, WM_COMMAND, IDC_CHECK_NAME, 1);
+    SendMessage(hDlg, WM_COMMAND, IDC_CHECK_SIZE, 1);
+    SendMessage(hDlg, WM_COMMAND, IDC_RADIO_FULLNAME, 1);
     SendMessage(hDlg, WM_COMMAND, IDC_CHECK_DATE, 0);
     SendMessage(hDlg, WM_COMMAND, IDC_CHECK_DATA, 0);
     
@@ -788,6 +808,11 @@ DWORD WINAPI Thread(PVOID pvoid)
 			continue;
 		}
 
+
+        g_DataBase.clear();
+        ListView_SetItemCount(g_hList, 0);
+
+
 		findData.resize(cmds.size());
 		for (size_t i = 0; i < cmds.size(); ++i)
 			findData[i].Cmd = std::move(cmds[i]);
@@ -902,7 +927,7 @@ DWORD WINAPI Thread(PVOID pvoid)
 		wdata.push_back(L'\0');
 
 		auto groups = Utility::Splite(wdata.data(), L"*");
-        g_DataBase.clear();
+
 		g_DataBase2.reserve(groups.size());
 		for (size_t i = 0; i < groups.size(); ++i)
 		{
@@ -929,11 +954,32 @@ DWORD WINAPI Thread(PVOID pvoid)
         {
             for (size_t k = 0; k < g_DataBase2[i].size(); ++k)
             {
-                g_DataBase.push_back(DataBaseInfo(&g_DataBase2[i][k], SHA_1::__HashResult()));
+                g_DataBase.push_back(DataBaseInfo(&g_DataBase2[i][k], SHA_1::__HashResult(), k == 0));
             }
         }
 
-        ListView_SetItemCount(g_hList, g_DataBase.size());
+		{
+			//for (int i = ListView_GetGroupCount(g_hList) - 1; i >= 0; --i)
+			//	ListView_RemoveGroup(g_hList, i);
+			//assert(ListView_GetGroupCount(g_hList) == 0);
+			//for (size_t i = 0; i < g_DataBase2.size(); ++i)
+			//{
+			//	TCHAR header[128];
+			//	swprintf_s(header, _countof(header), L"Group %d", i + 1);
+
+			//	LVGROUP group = { 0 };
+			//	group.cbSize = sizeof(LVGROUP);
+			//	group.mask = LVGF_HEADER | LVGF_GROUPID;
+			//	group.pszHeader = header;
+			//	group.cchHeader = wcslen(header) + 1;
+			//	group.iGroupId = i;
+			//	group.state = LVGS_NORMAL;
+
+			//	ListView_InsertGroup(g_hList, -1, &group);
+			//}
+
+			ListView_SetItemCount(g_hList, g_DataBase.size());
+		}
     }
 
     return 0;
