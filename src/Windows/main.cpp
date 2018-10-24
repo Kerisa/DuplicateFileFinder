@@ -331,14 +331,9 @@ static void Cls_OnSysCommand0(HWND hwnd, UINT cmd, int x, int y)
 static void Cls_OnSize(HWND hwnd, UINT state, int cx, int cy)
 {
 	RECT sbrc;
-	POINT lppt;
 	GetWindowRect(g_hStatus, &sbrc);
 	MoveWindow(g_hStatus, 0, cy - sbrc.bottom + sbrc.top, cx, sbrc.bottom - sbrc.top, TRUE);
-
-	lppt.y = sbrc.top;
-	lppt.x = sbrc.right;
-	ScreenToClient(hwnd, &lppt);
-	MoveWindow(g_hList, 0, 0, cx, lppt.y, TRUE);
+	MoveWindow(g_hList, 0, 0, cx, cy - sbrc.bottom + sbrc.top, TRUE);
 }
 
 
@@ -389,18 +384,44 @@ LRESULT CALLBACK MainWndProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam)
                     return TRUE;
 
                 // Ê¹ÓÃ¿Õ¸ñ¼üÇÐ»»checkbox
-                case VK_SPACE:
-                    iClickItem = ListView_GetSelectionMark(g_hList);
-                    g_DataBase[iClickItem].checkstate ^= 0x3;
-                    SendMessage(g_hList, LVM_REDRAWITEMS, iClickItem, iClickItem);
-                    UpdateStatusBar(1, nullptr);
-                    break;
+				case VK_SPACE: {
+					LVHITTESTINFO lhti;
+					lhti.pt = POINT{ 1, 20 };
+					DWORD dw = SendMessage(g_hList, LVM_SUBITEMHITTEST, 0, (LPARAM)&lhti);
+					iClickItem = ListView_GetSelectionMark(g_hList);
+					int count = 0;
+					int iSelCount = ListView_GetSelectedCount(g_hList);
+					for (int i = lhti.iItem; count < iSelCount && ListView_IsItemVisible(g_hList, i); ++i)
+					{
+						DWORD state = SendMessage(g_hList, LVM_GETITEMSTATE, i, LVIS_SELECTED);
+						if (state & LVIS_SELECTED)
+						{
+							g_DataBase[i].checkstate ^= 0x3;
+							SendMessage(g_hList, LVM_REDRAWITEMS, i, i);
+							++count;
+						}
+					}
+					UpdateStatusBar(1, nullptr);
+					break;
+				}
                 }
                 break;
 
-            case NM_CLICK:
-                UpdateStatusBar(1, nullptr);
-                break;
+			case NM_CLICK: {
+				NMITEMACTIVATE* ia = (NMITEMACTIVATE*)lParam;
+				LVHITTESTINFO lhti;
+				lhti.pt = ia->ptAction;
+				DWORD dw = SendMessage(g_hList, LVM_SUBITEMHITTEST, 0, (LPARAM)&lhti);
+
+				if (lhti.flags == LVHT_ONITEMSTATEICON && lhti.iSubItem == 0)
+				{
+					g_DataBase[lhti.iItem].checkstate ^= 0x3;
+					SendMessage(g_hList, LVM_REDRAWITEMS, lhti.iItem, lhti.iItem);
+				}
+
+				UpdateStatusBar(1, nullptr);
+				break;
+			}
 
 			case NM_CUSTOMDRAW: {
 				LPNMLVCUSTOMDRAW lpNMCustomDraw = (LPNMLVCUSTOMDRAW)lParam;
