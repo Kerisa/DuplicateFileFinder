@@ -49,5 +49,8 @@
     <ClCompile Include="..\..\include\utls\utility.cpp">
       <Filter>ref</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\include\Common.cpp">
+      <Filter>ref</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

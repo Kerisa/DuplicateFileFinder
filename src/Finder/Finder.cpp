@@ -6,7 +6,6 @@
 #include <iostream>
 #include "Parameters.h"
 #include "ListFile.h"
-#include <Windows.h>
 
 using namespace std;
 
@@ -33,20 +32,10 @@ int _tmain(int argc, wchar_t** argv)
     }
 
     auto list = ListFile(param);
-    setlocale(LC_ALL, "zh-cn");
     for (auto& r : list)
     {
-        int n = WideCharToMultiByte(CP_UTF8, NULL, r.mPath.c_str(), -1, NULL, NULL, NULL, NULL);
-        vector<char> mcb(n);
-        WideCharToMultiByte(CP_UTF8, NULL, r.mPath.c_str(), -1, mcb.data(), n, NULL, NULL);
-        cout.write(mcb.data(), n - 1);
-
-        wchar_t wbuf[128];
-        swprintf_s(wbuf, _countof(wbuf), L"|%lld|%lld\n", r.mFileSize, r.mLastWriteTime);
-        n = WideCharToMultiByte(CP_UTF8, NULL, wbuf, -1, NULL, NULL, NULL, NULL);
-        mcb.resize(n);
-        WideCharToMultiByte(CP_UTF8, NULL, wbuf, -1, mcb.data(), n, NULL, NULL);
-        cout.write(mcb.data(), n - 1);
+        string str = FileRecord::ToUTF8(r);
+        cout << str;
     }
     cout << endl;
     return 0;

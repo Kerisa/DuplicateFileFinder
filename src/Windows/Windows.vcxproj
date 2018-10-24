@@ -77,6 +77,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\include\Common.cpp" />
     <ClCompile Include="..\..\include\utls\utility.cpp" />
     <ClCompile Include="crc32.cpp" />
     <ClCompile Include="FileGroup.cpp" />

@@ -7,4 +7,4 @@
 class Parameters;
 class FileRecord;
 
-std::vector<std::set<const FileRecord*>> CompareFile(Parameters& param);
+std::vector<std::set<FileRecord*>> CompareFile(Parameters& param);

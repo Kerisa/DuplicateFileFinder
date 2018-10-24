@@ -139,22 +139,18 @@ static bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
         if (iClickItem >= g_DataBase.size() || iClickItem < 0)
             return TRUE;
 
-        // 获取全路径
-        ListView_GetItemText(g_hList, iClickItem, 1, szBuffer, _countof(szBuffer));
-        StringCbCat(szBuffer, _countof(szBuffer), TEXT("\\"));
-        ListView_GetItemText(g_hList, iClickItem, 0, szBuffer1, _countof(szBuffer1));
-        StringCbCat(szBuffer, _countof(szBuffer), szBuffer1);
-
         if (id == IDM_OPENFILE)
-            ShellExecute(0, 0, szBuffer, NULL, NULL, SW_SHOW);
+        {
+            ShellExecute(0, 0, g_DataBase[iClickItem].fi->mPath.c_str(), NULL, NULL, SW_SHOW);
+        }
         else
         {
             StringCbCopy(szBuffer1, _countof(szBuffer1), TEXT("确认删除"));
-            StringCbCat(szBuffer1, _countof(szBuffer1), szBuffer);
-            if (IDNO == MessageBox(hDlg, szBuffer1, TEXT("提示"),
-                MB_YESNO | MB_DEFBUTTON2 | MB_ICONWARNING))
+            StringCbCat(szBuffer1, _countof(szBuffer1), g_DataBase[iClickItem].fi->mPath.c_str());
+            if (IDNO == MessageBox(hDlg, szBuffer1, TEXT("提示"), MB_YESNO | MB_DEFBUTTON2 | MB_ICONWARNING))
                 return TRUE;
-            DeleteFile(szBuffer);
+
+            DeleteFile(g_DataBase[iClickItem].fi->mPath.c_str());
             if (!GetLastError())
             {
                 ListView_DeleteItem(g_hList, iClickItem);
@@ -162,7 +158,9 @@ static bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
                 UpdateStatusBar(1, 0);
             }
             else
+            {
                 MessageBox(hDlg, TEXT("无法删除文件，请手动删除"), TEXT("提示"), MB_ICONEXCLAMATION);
+            }
         }
         return TRUE;
 
@@ -418,14 +416,12 @@ static void FillListView(NMLVDISPINFO* pdi, LVITEM* pItem)
             wcscpy_s(pItem->pszText, pItem->cchTextMax, Buffer);
             break;
         }
-        case 5: // hash
-            wchar_t res[42];
-            static_cast<SHA_1*>(0)->ToHexString(
-                g_DataBase[itemid].hr.b, res, 42 * sizeof(wchar_t));
-
-            wcscpy_s(pItem->pszText, pItem->cchTextMax, res);
+        case 5: { // hash
+            TCHAR text[32];
+            swprintf_s(text, _countof(text), L"%08x", pfi->mCRC);
+            wcscpy_s(pItem->pszText, pItem->cchTextMax, text);
             break;
-
+        }
         default: break;
         }
     }
@@ -986,18 +982,9 @@ DWORD WINAPI Thread(PVOID pvoid)
 			g_DataBase2.push_back(std::vector<FileRecord>());
 			for (size_t k = 0; k < files.size(); ++k)
 			{
-				g_DataBase2[i].emplace_back();
-				FileRecord& fr = g_DataBase2[i].back();
-
-				auto parts = Utility::Splite(files[k], L"|");
-				fr.mPath = parts[0];
-				fr.mSuffixOffset = PathFindExtension(parts[0].c_str()) - parts[0].c_str();
-				if (fr.mSuffixOffset < parts[0].size())
-					++fr.mSuffixOffset;
-				fr.mNameOffset = PathFindFileName(parts[0].c_str()) - parts[0].c_str();
-
-				fr.mFileSize = _wtoll(parts[1].c_str());
-				fr.mLastWriteTime = _wtoll(parts[2].c_str());
+                g_DataBase2[i].emplace_back();
+                if (!FileRecord::FromUTF16(files[k], g_DataBase2[i].back()))
+                    g_DataBase2[i].pop_back();
 			}
 		}
 
@@ -1005,32 +992,12 @@ DWORD WINAPI Thread(PVOID pvoid)
         {
             for (size_t k = 0; k < g_DataBase2[i].size(); ++k)
             {
-                g_DataBase.push_back(DataBaseInfo(&g_DataBase2[i][k], SHA_1::__HashResult(), k == 0));
+                g_DataBase.push_back(DataBaseInfo(&g_DataBase2[i][k], k == 0));
             }
         }
 
-		{
-			//for (int i = ListView_GetGroupCount(g_hList) - 1; i >= 0; --i)
-			//	ListView_RemoveGroup(g_hList, i);
-			//assert(ListView_GetGroupCount(g_hList) == 0);
-			//for (size_t i = 0; i < g_DataBase2.size(); ++i)
-			//{
-			//	TCHAR header[128];
-			//	swprintf_s(header, _countof(header), L"Group %d", i + 1);
-
-			//	LVGROUP group = { 0 };
-			//	group.cbSize = sizeof(LVGROUP);
-			//	group.mask = LVGF_HEADER | LVGF_GROUPID;
-			//	group.pszHeader = header;
-			//	group.cchHeader = wcslen(header) + 1;
-			//	group.iGroupId = i;
-			//	group.state = LVGS_NORMAL;
-
-			//	ListView_InsertGroup(g_hList, -1, &group);
-			//}
-
-			ListView_SetItemCount(g_hList, g_DataBase.size());
-		}
+        MessageBox(NULL, L"查找结束", szAppName, MB_ICONINFORMATION);
+		ListView_SetItemCount(g_hList, g_DataBase.size());
     }
 
     return 0;

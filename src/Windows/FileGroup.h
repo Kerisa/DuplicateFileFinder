@@ -62,12 +62,11 @@ struct Filter
 struct DataBaseInfo
 {
     FileRecord* fi;
-    SHA_1::_HashResult hr;
     BYTE checkstate;
 	int mFistInGroup;
 
-    DataBaseInfo(FileRecord* _fi, const SHA_1::_HashResult& _hr, int fistInGroup = 0, BYTE ck = 1)
-        : fi(_fi), hr(_hr), checkstate(ck), mFistInGroup(fistInGroup) {}
+    DataBaseInfo(FileRecord* _fi, int fistInGroup = 0, BYTE ck = 1)
+        : fi(_fi), checkstate(ck), mFistInGroup(fistInGroup) {}
 };
 
 

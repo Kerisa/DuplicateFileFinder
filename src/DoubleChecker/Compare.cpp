@@ -72,14 +72,14 @@ void FillFileRecord(Parameters & param)
     }
 }
 
-void SortAndDivide(vector<const FileRecord*>& ref, std::vector<std::set<const FileRecord*>>& groups,
+void SortAndDivide(vector<FileRecord*>& ref, std::vector<std::set<FileRecord*>>& groups,
     std::function<bool(const FileRecord* lhs, const FileRecord* rhs)> isLess,
     std::function<bool(const FileRecord* lhs, const FileRecord* rhs)> isEqual)
 {
     sort(ref.begin(), ref.end(), isLess);
     for (int i = 0; i < ref.size(); )
     {
-        set<const FileRecord*> g;
+        set<FileRecord*> g;
         g.insert(ref[i]);
         int k = i + 1;
         for (; k < ref.size(); ++k)
@@ -100,14 +100,14 @@ void SortAndDivide(vector<const FileRecord*>& ref, std::vector<std::set<const Fi
     }
 }
 
-std::vector<std::set<const FileRecord*>> CompareFile(Parameters & param)
+std::vector<std::set<FileRecord*>> CompareFile(Parameters & param)
 {
     //FillFileRecord(param);
 
-    vector<const FileRecord*> ref;
-    transform(param.mFileList.begin(), param.mFileList.end(), back_inserter(ref), [](const FileRecord& fr) { return &fr; });
+    vector<FileRecord*> ref;
+    transform(param.mFileList.begin(), param.mFileList.end(), back_inserter(ref), [](FileRecord& fr) { return &fr; });
 
-    std::vector<std::set<const FileRecord*>> groups;
+    std::vector<std::set<FileRecord*>> groups;
 
     SortAndDivide(ref, groups, [param](const FileRecord* lhs, const FileRecord* rhs) {
 
@@ -152,19 +152,21 @@ std::vector<std::set<const FileRecord*>> CompareFile(Parameters & param)
 
     if (param.mContent.mSwitch == Parameters::ContentParam::MATCH_WHOLE_FILE)
     {
-        std::vector<std::set<const FileRecord*>> newGroups;
+        std::vector<std::set<FileRecord*>> newGroups;
         for (auto& g : groups)
         {
-            std::map<uint32_t, vector<const FileRecord*>> tmp;
+            // 相同 crc 放入同一组
+            std::map<uint32_t, vector<FileRecord*>> tmp;
             for (auto& fr : g)
             {
                 uint32_t crc = GetFileCrc(fr->mPath);
+                fr->mCRC = crc;
                 tmp[crc].push_back(fr);
             }
             for (auto it = tmp.begin(); it != tmp.end(); ++it)
                 if (it->second.size() > 1)
                 {
-                    std::set<const FileRecord*> n;
+                    std::set<FileRecord*> n;
                     copy(it->second.begin(), it->second.end(), inserter(n, n.end()));
                     newGroups.push_back(n);
                 }

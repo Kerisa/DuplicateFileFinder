@@ -214,26 +214,9 @@ bool Parameters::SetupFileList(const std::wstring & path, std::wstring& error)
     auto rows = Utility::Splite(wdata.data(), L"\r\n");
     for (auto& row : rows)
     {
-        auto parts = Utility::Splite(row, L"|");
-        if (parts.size() != 3)      // 无效的行
-        {
-            assert("Invalid row" && 0);
-            continue;
-        }
-
-        if (PathFileExists(parts[0].c_str()))
-        {
-            mFileList.emplace_back();
-            FileRecord& fr = mFileList.back();
-            fr.mPath = parts[0];
-            fr.mSuffixOffset = PathFindExtension(parts[0].c_str()) - parts[0].c_str();
-            if (fr.mSuffixOffset < parts[0].size())
-                ++fr.mSuffixOffset;
-            fr.mNameOffset = PathFindFileName(parts[0].c_str()) - parts[0].c_str();
-
-            fr.mFileSize = _wtoll(parts[1].c_str());
-            fr.mLastWriteTime = _wtoll(parts[2].c_str());
-        }
+        mFileList.emplace_back();
+        if (!FileRecord::FromUTF16(row, mFileList.back()))
+            mFileList.pop_back();
     }
 
     if (mFileList.empty())

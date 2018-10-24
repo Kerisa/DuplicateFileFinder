@@ -7,7 +7,6 @@
 #include <vector>
 #include "Parammeters.h"
 #include "Compare.h"
-#include <Windows.h>
 
 using namespace std;
 
@@ -37,22 +36,11 @@ int _tmain(int argc, TCHAR** argv)
 
     for (size_t i = 0; i < list.size(); ++i)
     {
-        //cout << "group " << i << ":\n-------------------------\n";
 		cout << "*\n";
         for (auto& fr : list[i])
         {
-            int n = WideCharToMultiByte(CP_UTF8, NULL, fr->mPath.c_str(), -1, NULL, NULL, NULL, NULL);
-            vector<char> mcb(n);
-            WideCharToMultiByte(CP_UTF8, NULL, fr->mPath.c_str(), -1, mcb.data(), n, NULL, NULL);
-            cout.write(mcb.data(), n - 1);
-
-            wchar_t wbuf[1024];
-            swprintf_s(wbuf, _countof(wbuf), L"|%lld|%lld\n", fr->mFileSize, fr->mLastWriteTime);
-            n = WideCharToMultiByte(CP_UTF8, NULL, wbuf, -1, NULL, NULL, NULL, NULL);
-            mcb.resize(n);
-            WideCharToMultiByte(CP_UTF8, NULL, wbuf, -1, mcb.data(), n, NULL, NULL);
-            cout.write(mcb.data(), n - 1);
-
+            string str = FileRecord::ToUTF8(*fr);
+            cout << str;
         }
         cout << "\n";
     }

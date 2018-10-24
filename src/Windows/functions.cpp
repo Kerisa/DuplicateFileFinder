@@ -78,9 +78,9 @@ BOOL InitListViewColumns(HWND g_hList)
 {
     int			i;
     LVCOLUMN	lvc;
-    int			iWidth[6]  = {195, 195, 75, 130, 130, 340};
+    int			iWidth[6]  = {200, 380, 75, 130, 130, 80};
     TCHAR		szTitle[6][16] = {TEXT("文件名"), TEXT("路径"), TEXT("大小"),
-                              TEXT("创建时间"), TEXT("修改时间"), TEXT("哈希值")};
+                              TEXT("创建时间"), TEXT("修改时间"), TEXT("CRC32")};
     
     lvc.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
     lvc.fmt	 = LVCFMT_LEFT;
@@ -113,14 +113,6 @@ BOOL InitListViewColumns(HWND g_hList)
     }
     return TRUE;
 }
-
-bool IsValidHash(int index)
-{
-    int k = 0;
-    while (k < SHA_1::SHA1_HASH_SIZE && !g_DataBase[index].hr.b[k]) ++k;
-    return k != SHA_1::SHA1_HASH_SIZE;
-}
-
 
 void SplitString(const wchar_t *src,
                  std::vector<std::wstring>& v,

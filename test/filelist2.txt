@@ -1,15 +1,15 @@
-d:\TestFolder2\0.txt|0|130876692557886651
-d:\TestFolder2\1\cn_windows_10_enterprise_x64_dvd_6846957.sha|88|131846005189476784
-d:\TestFolder2\1.!bt|1|130876698938640894
-d:\TestFolder2\1.bak|1|130876698118206604
-d:\TestFolder2\Bubbles.scr|788480|130610192940000000
-d:\TestFolder2\cglpt64.sys|23656|130869247300000000
-d:\TestFolder2\cn|88|130826549470618592
-d:\TestFolder2\cnamsl.sha|88|130826549470618592
-d:\TestFolder2\cn_windows_10_enterprise_x64_dvd.sha|88|130826549470618592
-d:\TestFolder2\cn_windows_10_enterprise_x64_dvd_6846957.txt|88|131846005189476784
-d:\TestFolder2\data_modified\cn_windows_10_enterprise_x64_dvd_6846957.sha|88|131846008062379254
-d:\TestFolder2\data_modified.sha|88|131846007544341351
-d:\TestFolder2\windows_10 - 副本.sha|44|131846328000000000
-d:\TestFolder2\windows_10.sha|88|131846328000000000
+d:\testfolder2\0.txt|0|130876692557886651|00000000
+d:\testfolder2\1\cn_windows_10_enterprise_x64_dvd_6846957.sha|88|131846005189476784|00000000
+d:\testfolder2\1.!bt|1|130876698938640894|00000000
+d:\testfolder2\1.bak|1|130876698118206604|00000000
+d:\testfolder2\Bubbles.scr|788480|130610192940000000|00000000
+d:\testfolder2\cglpt64.sys|23656|130869247300000000|00000000
+d:\testfolder2\cn|88|130826549470618592|00000000
+d:\testfolder2\cnamsl.sha|88|130826549470618592|00000000
+d:\testfolder2\cn_windows_10_enterprise_x64_dvd.sha|88|130826549470618592|00000000
+d:\testfolder2\cn_windows_10_enterprise_x64_dvd_6846957.txt|88|131846005189476784|00000000
+d:\testfolder2\data_modified\cn_windows_10_enterprise_x64_dvd_6846957.sha|88|131846008062379254|00000000
+d:\testfolder2\data_modified.sha|88|131846007544341351|00000000
+d:\testfolder2\windows_10 - 副本.sha|44|131846328000000000|00000000
+d:\testfolder2\windows_10.sha|88|131846328000000000|00000000
 

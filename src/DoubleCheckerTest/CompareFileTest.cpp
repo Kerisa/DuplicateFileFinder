@@ -10,11 +10,11 @@
 
 using namespace std;
 
-bool GroupCompare(std::vector<std::set<const FileRecord*>>& left, vector<vector<wstring>> right)
+bool GroupCompare(std::vector<std::set<FileRecord*>>& left, vector<vector<wstring>> right)
 {
     for (auto& rg : right)
     {
-        std::set<const FileRecord*>* curLeft = nullptr;
+        std::set<FileRecord*>* curLeft = nullptr;
         bool found = false;
         for (size_t lg = 0; lg < left.size() && !found; ++lg)
         {
@@ -53,7 +53,7 @@ void CompareFileTest::CompareTest()
 {
     bool ret;
     Parameters param;
-    std::vector<std::set<const FileRecord*>> list;
+    std::vector<std::set<FileRecord*>> list;
 
     ret = param.ParseCommand(vector<wstring>{L"-t", L"..\\test\\filelist2.txt" });
     Assert(ret);
