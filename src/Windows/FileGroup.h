@@ -5,14 +5,9 @@
 #include <array>
 #include <cassert>
 #include <windows.h>
-#include <process.h>
 #include <string>
-#include <set>
 #include <map>
-#include <memory>
-#include <unordered_map>
 #include <vector>
-#include <Strsafe.h>
 #include "common.h"
 
 
@@ -53,6 +48,9 @@ struct Filter
     std::wstring                mKeyWordOfFileName;  // 文件名中包含的关键字
     std::vector<std::wstring>   mSuffix;      // 包含的后缀名
     std::map<std::wstring, int> mSearchDirectory;    // 查找目录
+
+	std::wstring				MakeCompareCommand();
+	std::vector<std::wstring>	MakeSearchCommand();
 };
 
 

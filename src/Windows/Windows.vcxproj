@@ -83,12 +83,14 @@
     <ClCompile Include="FileGroup.cpp" />
     <ClCompile Include="functions.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="UI.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\crc32\crc.h" />
     <ClInclude Include="FileGroup.h" />
     <ClInclude Include="functions.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="UI.h" />
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="Windows.exe.manifest" />
