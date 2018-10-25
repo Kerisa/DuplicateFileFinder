@@ -331,6 +331,11 @@ DWORD WINAPI Thread(PVOID pvoid)
 
         for (size_t i = 0; i < g_DataBase2.size(); ++i)
         {
+            sort(g_DataBase2[i].begin(), g_DataBase2[i].end(), [](const FileRecord& lhs, const FileRecord& rhs) {
+                // 将最新的文件放到组内的第一个
+                return lhs.mLastWriteTime > rhs.mLastWriteTime;
+            });
+
             for (size_t k = 0; k < g_DataBase2[i].size(); ++k)
             {
                 g_DataBase.push_back(DataBaseInfo(&g_DataBase2[i][k], k == 0));

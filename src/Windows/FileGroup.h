@@ -60,6 +60,7 @@ struct DataBaseInfo
 {
     FileRecord* fi;
     BYTE checkstate;
+    DWORD mBKColor{ RGB(255,255,255) };
 	int mFistInGroup;
 
     DataBaseInfo(FileRecord* _fi, int fistInGroup = 0, BYTE ck = 1)

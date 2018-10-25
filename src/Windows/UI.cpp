@@ -193,12 +193,20 @@ namespace Detail
 
 	int ListViewCustomDraw(LPNMLVCUSTOMDRAW lpNMCustomDraw)
 	{
-		if (lpNMCustomDraw->nmcd.dwItemSpec < g_DataBase.size() && g_DataBase[lpNMCustomDraw->nmcd.dwItemSpec].mFistInGroup)
-			lpNMCustomDraw->clrText = RGB(0, 0, 0);
-		else
-			lpNMCustomDraw->clrText = RGB(128, 128, 128);
+        if (lpNMCustomDraw->nmcd.dwItemSpec < g_DataBase.size())
+        {
+            if (g_DataBase[lpNMCustomDraw->nmcd.dwItemSpec].mFistInGroup)
+                lpNMCustomDraw->clrText = RGB(0, 0, 0);
+            else
+                lpNMCustomDraw->clrText = RGB(0, 0, 0);
 
-		return CDRF_NOTIFYITEMDRAW;
+            lpNMCustomDraw->clrTextBk = g_DataBase[lpNMCustomDraw->nmcd.dwItemSpec].mBKColor;
+            return CDRF_NOTIFYITEMDRAW;
+        }
+        else
+        {
+            return CDRF_DODEFAULT;
+        }
 	}
 	
 	bool HasParentDirectoryInList(HWND g_hList, const std::wstring& dir)
@@ -686,8 +694,16 @@ bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
 			if (IDNO == MessageBox(hDlg, szBuffer1, TEXT("提示"), MB_YESNO | MB_DEFBUTTON2 | MB_ICONWARNING))
 				return TRUE;
 
-			DeleteFile(g_DataBase[iClickItem].fi->mPath.c_str());
-			if (!GetLastError())
+            vector<wchar_t> doubleNull(g_DataBase[iClickItem].fi->mPath.begin(), g_DataBase[iClickItem].fi->mPath.end());
+            doubleNull.push_back(L'\0');
+            doubleNull.push_back(L'\0');
+            SHFILEOPSTRUCT fo = { 0 };
+            fo.wFunc = FO_DELETE;
+            fo.pFrom = doubleNull.data();
+            fo.fFlags = FOF_NO_UI | FOF_ALLOWUNDO;
+            
+			//DeleteFile(g_DataBase[iClickItem].fi->mPath.c_str());
+			if (SHFileOperation(&fo) || !GetLastError())
 			{
 				ListView_DeleteItem(g_hList, iClickItem);
 				g_DataBase.erase(g_DataBase.begin() + iClickItem);
@@ -720,8 +736,16 @@ bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
 		for (size_t i = 0; i < g_DataBase.size(); ++i)
 			if (g_DataBase[i].checkstate == CHECKBOX_SECLECTED)
 			{
-				DeleteFile(g_DataBase[i].fi->mPath.c_str());
-				if (!GetLastError())
+                vector<wchar_t> doubleNull(g_DataBase[i].fi->mPath.begin(), g_DataBase[i].fi->mPath.end());
+                doubleNull.push_back(L'\0');
+                doubleNull.push_back(L'\0');
+                SHFILEOPSTRUCT fo = { 0 };
+                fo.wFunc = FO_DELETE;
+                fo.pFrom = doubleNull.data();
+                fo.fFlags = FOF_NO_UI | FOF_ALLOWUNDO;
+
+				//DeleteFile(g_DataBase[i].fi->mPath.c_str());
+				if (SHFileOperation(&fo) || !GetLastError())
 				{
 					g_DataBase.erase(g_DataBase.begin() + i);
 					++delCnt;
@@ -752,16 +776,55 @@ bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
 		std::thread([list]() {
 			if (!list.empty())
 			{
-				for (auto i : list)
+				for (size_t ii = 0; ii < list.size(); ++ii)
 				{
 					TCHAR msg[128];
-					swprintf_s(msg, _countof(msg), L"正在计算 CRC32...(%d/%d)", i + 1, list.size());
+					swprintf_s(msg, _countof(msg), L"正在计算 CRC32...(%d/%d)", ii + 1, list.size());
 					UpdateStatusBar(0, msg);
 
-					g_DataBase[i].fi->mCRC = GetFileCrc(g_DataBase[i].fi->mPath);
-					SendMessage(g_hList, LVM_REDRAWITEMS, i, i);
+					g_DataBase[list[ii]].fi->mCRC = GetFileCrc(g_DataBase[list[ii]].fi->mPath);
+					SendMessage(g_hList, LVM_REDRAWITEMS, list[ii], list[ii]);
 				}
 				UpdateStatusBar(0, L"CRC32 计算完成");
+                
+                int color[2] = { RGB(192,255,255), RGB(255, 204, 192) };
+                int colorIdx = 0;
+                for (size_t i = 0; i < g_DataBase.size(); )
+                {
+                    SendMessage(g_hList, LVM_REDRAWITEMS, i, i);
+                    if (!g_DataBase[i].mFistInGroup)
+                    {
+                        ++i;
+                        continue;
+                    }
+
+                    DWORD crc32 = g_DataBase[i].fi->mCRC;
+                    if (crc32 == 0)
+                    {
+                        ++i;
+                        continue;
+                    }
+
+                    size_t j = i + 1;
+                    while (j < g_DataBase.size() && !g_DataBase[j].mFistInGroup)
+                    {
+                        if (g_DataBase[j].fi->mCRC == crc32)
+                        {
+                            g_DataBase[j].mBKColor = color[colorIdx];
+                            SendMessage(g_hList, LVM_REDRAWITEMS, j, j);
+                        }
+                        ++j;
+                    }
+
+                    if (j > i + 1)
+                    {
+                        g_DataBase[i].mBKColor = color[colorIdx];
+                        SendMessage(g_hList, LVM_REDRAWITEMS, i, i);
+                    }
+
+                    colorIdx ^= 1;
+                    i = j;
+                }
 			}
 		}).detach();
 		return TRUE;
@@ -819,7 +882,7 @@ bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
 			size_t j = i + 1;
 			while (j < g_DataBase.size() && !g_DataBase[j].mFistInGroup)
 			{
-				g_DataBase[j].checkstate = CHECKBOX_SECLECTED;
+                g_DataBase[j].checkstate = CHECKBOX_UNSECLECTED;
 				if (g_DataBase[j].fi->mCRC == crc32)
 				{
 					g_DataBase[j].checkstate = CHECKBOX_SECLECTED;
@@ -1186,13 +1249,22 @@ bool Cls_OnInitDialog_filter(HWND hDlg, HWND hwndFocus, LPARAM lParam)
     SendMessage(hDlg, WM_COMMAND, IDC_RADIO_FULLNAME, 1);
     SendMessage(hDlg, WM_COMMAND, IDC_CHECK_DATE, 0);
     SendMessage(hDlg, WM_COMMAND, IDC_CHECK_DATA, 0);
+
+    CheckDlgButton(hDlg, IDC_RADIO_INCNAME,      FALSE);
+    CheckDlgButton(hDlg, IDC_RADIO_FULLNAME,      TRUE);
+    CheckDlgButton(hDlg, IDC_RADIO_SIZEEQUAL,     TRUE);
+    CheckDlgButton(hDlg, IDC_RADIO_DATEEQUAL,     TRUE);
+    CheckDlgButton(hDlg, IDC_RADIO_DATAEQUAL,     TRUE);
+
+    CheckDlgButton(hDlg, IDC_RADIO_TYPE_IGN,      FALSE);
+    CheckDlgButton(hDlg, IDC_RADIO_TYPE_INC,       TRUE);
+    CheckDlgButton(hDlg, IDC_RADIO_SIZERANGE_IGN, FALSE);
+    CheckDlgButton(hDlg, IDC_RADIO_SIZERANGE_INC,  TRUE);
+    CheckDlgButton(hDlg, IDC_RADIO_ATTRIB_IGN,    FALSE);
+    CheckDlgButton(hDlg, IDC_RADIO_ATTRIB_INC,     TRUE);
+
     
 	Detail::LoadFilterConfigToDialog(hDlg, g_Filter);
-	
-	CheckDlgButton(hDlg, IDC_RADIO_FULLNAME,  TRUE);
-	CheckDlgButton(hDlg, IDC_RADIO_SIZEEQUAL, TRUE);
-	CheckDlgButton(hDlg, IDC_RADIO_DATEEQUAL, TRUE);
-	CheckDlgButton(hDlg, IDC_RADIO_DATAEQUAL, TRUE);
     
     return true;
 }

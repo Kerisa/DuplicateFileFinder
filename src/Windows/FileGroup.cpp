@@ -58,7 +58,7 @@ std::vector<std::wstring> Filter::MakeSearchCommand()
 	if (Switch[Filter::Search_FileSize] != Filter::Type_Off)
 	{
 		TCHAR buf[128];
-		swprintf_s(buf, _countof(buf), L"-size (%lld:%lld) ", FileSizeRangeLow, FileSizeRangeHigh);
+		swprintf_s(buf, _countof(buf), L"-size (%llu:%llu) ", FileSizeRangeLow, FileSizeRangeHigh);
 		cmd += buf;
 	}
 
