@@ -791,38 +791,34 @@ bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
                 int colorIdx = 0;
                 for (size_t i = 0; i < g_DataBase.size(); )
                 {
-                    SendMessage(g_hList, LVM_REDRAWITEMS, i, i);
-                    if (!g_DataBase[i].mFistInGroup)
-                    {
-                        ++i;
-                        continue;
-                    }
-
                     DWORD crc32 = g_DataBase[i].fi->mCRC;
-                    if (crc32 == 0)
+                    g_DataBase[i].mBKColor = RGB(255, 255, 255);
+                    if (!g_DataBase[i].mFistInGroup || crc32 == 0)
                     {
+                        SendMessage(g_hList, LVM_REDRAWITEMS, i, i);
                         ++i;
                         continue;
                     }
 
+                    size_t sameCrcInGroup = 0;
                     size_t j = i + 1;
-                    while (j < g_DataBase.size() && !g_DataBase[j].mFistInGroup)
+                    for (; j < g_DataBase.size() && !g_DataBase[j].mFistInGroup; ++j)
                     {
                         if (g_DataBase[j].fi->mCRC == crc32)
                         {
+                            ++sameCrcInGroup;
                             g_DataBase[j].mBKColor = color[colorIdx];
                             SendMessage(g_hList, LVM_REDRAWITEMS, j, j);
                         }
-                        ++j;
                     }
 
-                    if (j > i + 1)
+                    if (sameCrcInGroup > 0)
                     {
                         g_DataBase[i].mBKColor = color[colorIdx];
-                        SendMessage(g_hList, LVM_REDRAWITEMS, i, i);
+                        colorIdx ^= 1;
                     }
 
-                    colorIdx ^= 1;
+                    SendMessage(g_hList, LVM_REDRAWITEMS, i, i);
                     i = j;
                 }
 			}
