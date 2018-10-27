@@ -195,11 +195,7 @@ namespace Detail
 	{
         if (lpNMCustomDraw->nmcd.dwItemSpec < g_DataBase.size())
         {
-            if (g_DataBase[lpNMCustomDraw->nmcd.dwItemSpec].mFistInGroup)
-                lpNMCustomDraw->clrText = RGB(0, 0, 0);
-            else
-                lpNMCustomDraw->clrText = RGB(0, 0, 0);
-
+            lpNMCustomDraw->clrText = g_DataBase[lpNMCustomDraw->nmcd.dwItemSpec].mTextColor;
             lpNMCustomDraw->clrTextBk = g_DataBase[lpNMCustomDraw->nmcd.dwItemSpec].mBKColor;
             return CDRF_NOTIFYITEMDRAW;
         }
@@ -808,6 +804,7 @@ bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
                         {
                             ++sameCrcInGroup;
                             g_DataBase[j].mBKColor = color[colorIdx];
+                            g_DataBase[j].mTextColor = RGB(0, 0, 0);
                             SendMessage(g_hList, LVM_REDRAWITEMS, j, j);
                         }
                     }
@@ -815,6 +812,7 @@ bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
                     if (sameCrcInGroup > 0)
                     {
                         g_DataBase[i].mBKColor = color[colorIdx];
+                        g_DataBase[i].mTextColor = RGB(0, 0, 0);
                         colorIdx ^= 1;
                     }
 

@@ -339,6 +339,7 @@ DWORD WINAPI Thread(PVOID pvoid)
             for (size_t k = 0; k < g_DataBase2[i].size(); ++k)
             {
                 g_DataBase.push_back(DataBaseInfo(&g_DataBase2[i][k], k == 0));
+                g_DataBase.back().mTextColor = k == 0 ? RGB(0, 0, 0) : RGB(128, 128, 128);
             }
         }
 

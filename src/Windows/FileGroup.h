@@ -61,6 +61,7 @@ struct DataBaseInfo
     FileRecord* fi;
     BYTE checkstate;
     DWORD mBKColor{ RGB(255,255,255) };
+    DWORD mTextColor{ RGB(0,0,0) };
 	int mFistInGroup;
 
     DataBaseInfo(FileRecord* _fi, int fistInGroup = 0, BYTE ck = 1)
