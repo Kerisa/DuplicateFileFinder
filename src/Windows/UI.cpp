@@ -216,9 +216,9 @@ namespace Detail
 		for (int i = 0; i < cnt; ++i)
 		{
 			SendMessage(g_hList, LB_GETTEXT, i, (LPARAM)Buf);
-			if (dir.find(Buf) != std::wstring::npos)
+            size_t index = dir.find(Buf);
+			if (index != std::wstring::npos && dir[index] == L'\\')
 			{
-				//if (dir.back() == L'\\')  // 是文件路径形式而不是其他符号
 				return true;
 			}
 		}

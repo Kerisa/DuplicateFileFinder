@@ -87,7 +87,9 @@ std::vector<std::wstring> Filter::MakeSearchCommand()
 	std::vector<std::wstring> cmds;
 	for (auto& it : mSearchDirectory)
 	{
-		cmds.push_back(std::wstring(L"Finder.exe ") + it.first + L" " + cmd);
+		cmds.push_back(std::wstring(L"Finder.exe \"") + it.first + L"\"");
+        if (!cmd.empty())
+            cmds.back() += L" " + cmd;
 	}
 	return cmds;
 }
