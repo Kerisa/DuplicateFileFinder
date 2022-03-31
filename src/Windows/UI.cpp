@@ -311,6 +311,28 @@ namespace Detail
       EnableWindow(GetDlgItem(hDlg, IDC_COMBO_TYPEINC), enable);
       break;
 
+    case IDC_CHECK_DEL_KEYWORD:
+      EnableWindow(GetDlgItem(hDlg, IDC_RADIO_DEL_KEYWORD_INC), enable);
+      EnableWindow(GetDlgItem(hDlg, IDC_RADIO_DEL_KEYWORD_EXC), enable);
+      EnableWindow(GetDlgItem(hDlg, IDC_EDIT_DEL_KEYWORD_INC), enable && IsDlgButtonChecked(hDlg, IDC_RADIO_DEL_KEYWORD_INC));
+      EnableWindow(GetDlgItem(hDlg, IDC_EDIT_DEL_KEYWORD_EXC), enable && IsDlgButtonChecked(hDlg, IDC_RADIO_DEL_KEYWORD_EXC));
+      break;
+
+    case IDC_CHECK_DEL_NAMELEN:
+      EnableWindow(GetDlgItem(hDlg, IDC_RADIO_DEL_NAMELEN_LONG), enable);
+      EnableWindow(GetDlgItem(hDlg, IDC_RADIO_DEL_NAMELEN_SHORT), enable);
+      break;
+
+    case IDC_CHECK_DEL_PATHDEP:
+      EnableWindow(GetDlgItem(hDlg, IDC_RADIO_DEL_PATHDEP_DEPTH), enable);
+      EnableWindow(GetDlgItem(hDlg, IDC_RADIO_DEL_PATHDEP_SHALLOW), enable);
+      break;
+
+    case IDC_CHECK_DEL_SEARCHORD:
+      EnableWindow(GetDlgItem(hDlg, IDC_RADIO_DEL_SEARCHORD_FRONT), enable);
+      EnableWindow(GetDlgItem(hDlg, IDC_RADIO_DEL_SEARCHORD_BACK), enable);
+      break;
+
     default:
       assert(0);
       break;
@@ -471,6 +493,55 @@ namespace Detail
       SendDlgItemMessage(hDlg, IDC_LIST_DIR, LB_ADDSTRING, 0, (LPARAM)str.c_str());
     }
 
+    //------------------------------------------- 删除策略
+
+    assert((int)!!filter.Switch[Filter::Del_Keyword] + !!filter.Switch[Filter::Del_NameLength] +
+      !!filter.Switch[Filter::Del_PathDepth] + !!filter.Switch[Filter::Del_SearchOrder] <= 1);
+    if ((status = filter.Switch[Filter::Del_Keyword]) == Filter::Type_Off) {
+      EnableControls(hDlg, IDC_CHECK_DEL_KEYWORD, false);
+    }
+    else {
+      CheckDlgButton(hDlg, IDC_CHECK_DEL_KEYWORD, true);
+      EnableControls(hDlg, IDC_CHECK_DEL_KEYWORD, true);
+      assert(status == Filter::Type_Include || status == Filter::Type_Ignore);
+      bool inc = status == Filter::Type_Include;
+      CheckDlgButton(hDlg, IDC_RADIO_DEL_KEYWORD_INC, inc);
+      CheckDlgButton(hDlg, IDC_RADIO_DEL_KEYWORD_EXC, !inc);
+      EnableWindow(GetDlgItem(hDlg, IDC_EDIT_DEL_KEYWORD_INC), inc);
+      EnableWindow(GetDlgItem(hDlg, IDC_EDIT_DEL_KEYWORD_EXC), !inc);
+      SetDlgItemText(hDlg, IDC_EDIT_DEL_KEYWORD_INC, inc ? filter.mKeyWordOfFileNameForDelete.c_str() : L"");
+      SetDlgItemText(hDlg, IDC_EDIT_DEL_KEYWORD_EXC, inc ? L"" : filter.mKeyWordOfFileNameForDelete.c_str());
+    }
+
+    if ((status = filter.Switch[Filter::Del_NameLength]) == Filter::Type_Off) {
+      EnableControls(hDlg, IDC_CHECK_DEL_NAMELEN, false);
+    }
+    else {
+      CheckDlgButton(hDlg, IDC_CHECK_DEL_NAMELEN, true);
+      EnableControls(hDlg, IDC_CHECK_DEL_NAMELEN, true);
+      CheckDlgButton(hDlg, IDC_RADIO_DEL_NAMELEN_LONG, status == Filter::Type_Long);
+      CheckDlgButton(hDlg, IDC_RADIO_DEL_NAMELEN_SHORT, status == Filter::Type_Short);
+    }
+
+    if ((status = filter.Switch[Filter::Del_PathDepth]) == Filter::Type_Off) {
+      EnableControls(hDlg, IDC_CHECK_DEL_PATHDEP, false);
+    }
+    else {
+      CheckDlgButton(hDlg, IDC_CHECK_DEL_PATHDEP, true);
+      EnableControls(hDlg, IDC_CHECK_DEL_PATHDEP, true);
+      CheckDlgButton(hDlg, IDC_RADIO_DEL_PATHDEP_DEPTH, status == Filter::Type_Long);
+      CheckDlgButton(hDlg, IDC_RADIO_DEL_PATHDEP_SHALLOW, status == Filter::Type_Short);
+    }
+
+    if ((status = filter.Switch[Filter::Del_SearchOrder]) == Filter::Type_Off) {
+      EnableControls(hDlg, IDC_CHECK_DEL_SEARCHORD, false);
+    }
+    else {
+      CheckDlgButton(hDlg, IDC_CHECK_DEL_SEARCHORD, true);
+      EnableControls(hDlg, IDC_CHECK_DEL_SEARCHORD, true);
+      CheckDlgButton(hDlg, IDC_RADIO_DEL_SEARCHORD_FRONT, status == Filter::Type_First);
+      CheckDlgButton(hDlg, IDC_RADIO_DEL_SEARCHORD_BACK, status == Filter::Type_Last);
+    }
   }
 
 
@@ -642,6 +713,40 @@ namespace Detail
           std::make_pair(std::wstring(Buffer), -1/*times*/));
       }
     }
+
+    //------------------------------------------- 删除策略
+
+    filter.Switch[Filter::Del_Keyword] = Filter::Type_Off;
+    if (IsDlgButtonChecked(hDlg, IDC_CHECK_DEL_KEYWORD)) {
+      if (IsDlgButtonChecked(hDlg, IDC_RADIO_DEL_KEYWORD_INC)) {
+        filter.Switch[Filter::Del_Keyword] = Filter::Type_Include;
+        GetDlgItemText(hDlg, IDC_EDIT_DEL_KEYWORD_INC, Buffer, MAX_PATH);
+        filter.mKeyWordOfFileNameForDelete = Buffer;
+      }
+      else {
+        filter.Switch[Filter::Del_Keyword] = Filter::Type_Ignore;
+        GetDlgItemText(hDlg, IDC_EDIT_DEL_KEYWORD_EXC, Buffer, MAX_PATH);
+        filter.mKeyWordOfFileNameForDelete = Buffer;
+      }
+      assert(!filter.mKeyWordOfFileNameForDelete.empty());
+    }
+
+    filter.Switch[Filter::Del_NameLength] = Filter::Type_Off;
+    if (IsDlgButtonChecked(hDlg, IDC_CHECK_DEL_NAMELEN)) {
+      filter.Switch[Filter::Del_NameLength] = IsDlgButtonChecked(hDlg, IDC_RADIO_DEL_NAMELEN_LONG) ? Filter::Type_Long : Filter::Type_Short;
+    }
+
+    filter.Switch[Filter::Del_PathDepth] = Filter::Type_Off;
+    if (IsDlgButtonChecked(hDlg, IDC_CHECK_DEL_PATHDEP)) {
+      filter.Switch[Filter::Del_PathDepth] = IsDlgButtonChecked(hDlg, IDC_RADIO_DEL_PATHDEP_DEPTH) ? Filter::Type_Long : Filter::Type_Short;
+    }
+
+    filter.Switch[Filter::Del_SearchOrder] = Filter::Type_Off;
+    if (IsDlgButtonChecked(hDlg, IDC_CHECK_DEL_SEARCHORD)) {
+      filter.Switch[Filter::Del_SearchOrder] = IsDlgButtonChecked(hDlg, IDC_RADIO_DEL_SEARCHORD_FRONT) ? Filter::Type_First : Filter::Type_Last;
+    }
+    assert((int)!!filter.Switch[Filter::Del_Keyword] + !!filter.Switch[Filter::Del_NameLength] +
+      !!filter.Switch[Filter::Del_PathDepth] + !!filter.Switch[Filter::Del_SearchOrder] <= 1);
   }
 }
 
@@ -1096,7 +1201,7 @@ LRESULT Cls_OnListViewNotify(HWND hDlg, WPARAM wParam, LPARAM lParam, BOOL& bHan
 
 //////////////////////////////////////////////////////////////////////////////////////
 
-//                                  过滤条件窗口                                      //
+//                                  过滤条件窗口                                     //
 
 //////////////////////////////////////////////////////////////////////////////////////
 
@@ -1112,6 +1217,18 @@ bool Cls_OnCommand_filter(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
     {
       MessageBox(hDlg, L"至少选择一个匹配条件", szAppName, MB_ICONWARNING);
       return TRUE;
+    }
+    if (IsDlgButtonChecked(hDlg, IDC_CHECK_DEL_KEYWORD)) {
+      TCHAR buf_inc[MAX_PATH] = { 0 };
+      TCHAR buf_exc[MAX_PATH] = { 0 };
+      GetDlgItemText(hDlg, IDC_EDIT_DEL_KEYWORD_INC, buf_inc, MAX_PATH);
+      GetDlgItemText(hDlg, IDC_EDIT_DEL_KEYWORD_EXC, buf_exc, MAX_PATH);
+      bool empty = wcslen(buf_inc) == 0 && IsDlgButtonChecked(hDlg, IDC_RADIO_DEL_KEYWORD_INC);
+      empty |= wcslen(buf_exc) == 0 && IsDlgButtonChecked(hDlg, IDC_RADIO_DEL_KEYWORD_EXC);
+      if (empty) {
+        MessageBox(hDlg, L"请输入优先匹配的关键字", szAppName, MB_ICONWARNING);
+        return TRUE;
+      }
     }
     Detail::UpdateFilterConfig(hDlg, g_Filter);
 
@@ -1202,7 +1319,35 @@ bool Cls_OnCommand_filter(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
     CheckDlgButton(hDlg, IDC_RADIO_FULLNAME, false);
     EnableWindow(GetDlgItem(hDlg, IDC_CHECK_NOSUFFIX), FALSE);
     EnableWindow(GetDlgItem(hDlg, IDC_EDIT_NAMEINC), TRUE);
+    break;
+
+  case IDC_CHECK_DEL_KEYWORD:
+  case IDC_CHECK_DEL_NAMELEN:
+  case IDC_CHECK_DEL_PATHDEP:
+  case IDC_CHECK_DEL_SEARCHORD: {
+    bool b1 = IsDlgButtonChecked(hDlg, IDC_CHECK_DEL_KEYWORD);
+    bool b2 = IsDlgButtonChecked(hDlg, IDC_CHECK_DEL_NAMELEN);
+    bool b3 = IsDlgButtonChecked(hDlg, IDC_CHECK_DEL_PATHDEP);
+    bool b4 = IsDlgButtonChecked(hDlg, IDC_CHECK_DEL_SEARCHORD);
+    CheckDlgButton(hDlg, IDC_CHECK_DEL_KEYWORD,   id == IDC_CHECK_DEL_KEYWORD ? b1 : false);
+    CheckDlgButton(hDlg, IDC_CHECK_DEL_NAMELEN,   id == IDC_CHECK_DEL_NAMELEN ? b2 : false);
+    CheckDlgButton(hDlg, IDC_CHECK_DEL_PATHDEP,   id == IDC_CHECK_DEL_PATHDEP ? b3 : false);
+    CheckDlgButton(hDlg, IDC_CHECK_DEL_SEARCHORD, id == IDC_CHECK_DEL_SEARCHORD ? b4 : false);
+    Detail::EnableControls(hDlg, IDC_CHECK_DEL_KEYWORD,   !!IsDlgButtonChecked(hDlg, IDC_CHECK_DEL_KEYWORD));
+    Detail::EnableControls(hDlg, IDC_CHECK_DEL_NAMELEN,   !!IsDlgButtonChecked(hDlg, IDC_CHECK_DEL_NAMELEN));
+    Detail::EnableControls(hDlg, IDC_CHECK_DEL_PATHDEP,   !!IsDlgButtonChecked(hDlg, IDC_CHECK_DEL_PATHDEP));
+    Detail::EnableControls(hDlg, IDC_CHECK_DEL_SEARCHORD, !!IsDlgButtonChecked(hDlg, IDC_CHECK_DEL_SEARCHORD));
     return TRUE;
+  }
+  case IDC_RADIO_DEL_KEYWORD_INC:
+    EnableWindow(GetDlgItem(hDlg, IDC_EDIT_DEL_KEYWORD_INC), IsDlgButtonChecked(hDlg, id));
+    EnableWindow(GetDlgItem(hDlg, IDC_EDIT_DEL_KEYWORD_EXC), !IsDlgButtonChecked(hDlg, id));
+    break;
+
+  case IDC_RADIO_DEL_KEYWORD_EXC:
+    EnableWindow(GetDlgItem(hDlg, IDC_EDIT_DEL_KEYWORD_INC), !IsDlgButtonChecked(hDlg, id));
+    EnableWindow(GetDlgItem(hDlg, IDC_EDIT_DEL_KEYWORD_EXC), IsDlgButtonChecked(hDlg, id));
+    break;
   }
 
   return FALSE;
@@ -1257,6 +1402,10 @@ bool Cls_OnInitDialog_filter(HWND hDlg, HWND hwndFocus, LPARAM lParam)
   CheckDlgButton(hDlg, IDC_RADIO_ATTRIB_IGN, FALSE);
   CheckDlgButton(hDlg, IDC_RADIO_ATTRIB_INC, TRUE);
 
+  CheckDlgButton(hDlg, IDC_RADIO_DEL_KEYWORD_INC, TRUE);
+  CheckDlgButton(hDlg, IDC_RADIO_DEL_NAMELEN_LONG, TRUE);
+  CheckDlgButton(hDlg, IDC_RADIO_DEL_PATHDEP_DEPTH, TRUE);
+  CheckDlgButton(hDlg, IDC_RADIO_DEL_SEARCHORD_FRONT, TRUE);
 
   Detail::LoadFilterConfigToDialog(hDlg, g_Filter);
 
