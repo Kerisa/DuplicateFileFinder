@@ -93,7 +93,7 @@
     <ClInclude Include="UI.h" />
   </ItemGroup>
   <ItemGroup>
-    <Manifest Include="Windows.exe.manifest" />
+    <Manifest Include="DuplicateFileFinder.exe.manifest" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="main.rc" />
