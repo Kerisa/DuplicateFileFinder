@@ -66,21 +66,15 @@ void SplitString(const wchar_t* src,
 
 std::wstring GetFileName(const std::wstring& s)
 {
-  std::vector<wchar_t> dir(s.size() + 1);
   std::vector<wchar_t> name(s.size() + 1);
-  std::vector<wchar_t> ext(s.size() + 1);
-  std::vector<wchar_t> drv(s.size() + 1);
-  _wsplitpath(s.c_str(), drv.data(), dir.data(), name.data(), ext.data());
+  _wsplitpath_s(s.c_str(), nullptr, 0, nullptr, 0, name.data(), name.size(), nullptr, 0);
   return std::wstring(name.data());
 }
 
 size_t GetPathDepth(const std::wstring& s)
 {
   std::vector<wchar_t> dir(s.size() + 1);
-  std::vector<wchar_t> name(s.size() + 1);
-  std::vector<wchar_t> ext(s.size() + 1);
-  std::vector<wchar_t> drv(s.size() + 1);
-  _wsplitpath(s.c_str(), drv.data(), dir.data(), name.data(), ext.data());
+  _wsplitpath_s(s.c_str(), nullptr, 0, dir.data(), dir.size(), nullptr, 0, nullptr, 0);
   std::vector<std::wstring> result;
   SplitString(dir.data(), result, L"\\", 0, 0, true);
   return result.size();

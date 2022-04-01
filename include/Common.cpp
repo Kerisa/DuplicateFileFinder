@@ -86,7 +86,7 @@ uint32_t GetFileCrc(const std::wstring& path)
         else
         {
             in.read(buf, length);
-            crc = CRC32((unsigned char*)buf, crc, length);
+            crc = CRC32((unsigned char*)buf, crc, static_cast<int>(length));
             break;
         }
     }
