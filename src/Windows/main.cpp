@@ -332,16 +332,56 @@ DWORD WINAPI Thread(PVOID pvoid)
 
         for (size_t i = 0; i < g_DataBase2.size(); ++i)
         {
-            std::sort(g_DataBase2[i].begin(), g_DataBase2[i].end(), [](const FileRecord& lhs, const FileRecord& rhs) {
-                // 将最新的文件放到组内的第一个
-                return lhs.mLastWriteTime > rhs.mLastWriteTime;
-            });
-
-            for (size_t k = 0; k < g_DataBase2[i].size(); ++k)
-            {
-                g_DataBase.push_back(DataBaseInfo(&g_DataBase2[i][k], k == 0));
-                g_DataBase.back().mTextColor = k == 0 ? RGB(0, 0, 0) : RGB(128, 128, 128);
+          Filter& ref = g_Filter;
+          std::sort(g_DataBase2[i].begin(), g_DataBase2[i].end(), [ref](const FileRecord& lhs, const FileRecord& rhs) {
+            //
+            // apply delete rule
+            //
+            if (ref.Switch[Filter::Keep_Keyword] != Filter::Type_Off) {
+              if (ref.Switch[Filter::Keep_Keyword] == Filter::Type_Include) {
+                return GetFileName(lhs.mPath).find(ref.mKeyWordOfFileNameForDelete) < GetFileName(rhs.mPath).find(ref.mKeyWordOfFileNameForDelete);
+              }
+              else {
+                return GetFileName(lhs.mPath).find(ref.mKeyWordOfFileNameForDelete) > GetFileName(rhs.mPath).find(ref.mKeyWordOfFileNameForDelete);
+              }
             }
+
+            if (ref.Switch[Filter::Keep_NameLength] != Filter::Type_Off) {
+              if (ref.Switch[Filter::Keep_NameLength] == Filter::Type_Long) {
+                return GetFileName(lhs.mPath).size() > GetFileName(rhs.mPath).size();
+              }
+              else {
+                return GetFileName(lhs.mPath).size() < GetFileName(rhs.mPath).size();
+              }
+            }
+
+            if (ref.Switch[Filter::Keep_PathDepth] != Filter::Type_Off) {
+              if (ref.Switch[Filter::Keep_PathDepth] == Filter::Type_Long) {
+                return GetPathDepth(lhs.mPath) > GetPathDepth(rhs.mPath);
+              }
+              else {
+                return GetPathDepth(lhs.mPath) < GetPathDepth(rhs.mPath);
+              }
+            }
+
+            if (ref.Switch[Filter::Keep_SearchOrder] != Filter::Type_Off) {
+              if (ref.Switch[Filter::Keep_SearchOrder] == Filter::Type_First) {
+                return ref.GetSearchPathOrder(lhs.mPath) < ref.GetSearchPathOrder(rhs.mPath);
+              }
+              else {
+                return ref.GetSearchPathOrder(lhs.mPath) > ref.GetSearchPathOrder(rhs.mPath);
+              }
+            }
+
+            // 将最新的文件放到组内的第一个
+            return lhs.mLastWriteTime > rhs.mLastWriteTime;
+          });
+
+          for (size_t k = 0; k < g_DataBase2[i].size(); ++k)
+          {
+            g_DataBase.push_back(DataBaseInfo(&g_DataBase2[i][k], k == 0));
+            g_DataBase.back().mTextColor = k == 0 ? RGB(0, 0, 0) : RGB(128, 128, 128);
+          }
         }
 
         MessageBox(NULL, L"查找结束", szAppName, MB_ICONINFORMATION);

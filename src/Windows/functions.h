@@ -11,3 +11,7 @@ void SplitString                (const wchar_t *src,
                                  const wchar_t  end,
                                  bool ignoreSpace
                                  );
+
+std::wstring GetFileName(const std::wstring& s);
+
+size_t GetPathDepth(const std::wstring& s);

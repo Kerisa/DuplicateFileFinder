@@ -117,7 +117,7 @@ namespace Detail
   void FillListView(NMLVDISPINFO* pdi, LVITEM* pItem)
   {
     int itemid = pItem->iItem;
-    if (itemid >= g_DataBase.size())
+    if (itemid >= static_cast<int>(g_DataBase.size()))
       return;
 
     pdi->item.state = INDEXTOSTATEIMAGEMASK(g_DataBase[itemid].checkstate);
@@ -217,7 +217,7 @@ namespace Detail
     {
       SendMessage(g_hList, LB_GETTEXT, i, (LPARAM)Buf);
       size_t index = dir.find(Buf);
-      if (index != std::wstring::npos && dir[index] == L'\\')
+      if (index == 0)
       {
         return true;
       }
@@ -484,20 +484,19 @@ namespace Detail
 
     //------------------------------------------- 查找的目录
 
-    std::map<std::wstring, int>::iterator it;
     std::wstring str;
-    for (it = filter.mSearchDirectory.begin(); it != filter.mSearchDirectory.end(); ++it)
+    for (auto it = filter.mSearchDirectory.begin(); it != filter.mSearchDirectory.end(); ++it)
     {
       str.clear();
-      str += it->first;
+      str += it->mDir;
       SendDlgItemMessage(hDlg, IDC_LIST_DIR, LB_ADDSTRING, 0, (LPARAM)str.c_str());
     }
 
     //------------------------------------------- 删除策略
 
-    assert((int)!!filter.Switch[Filter::Del_Keyword] + !!filter.Switch[Filter::Del_NameLength] +
-      !!filter.Switch[Filter::Del_PathDepth] + !!filter.Switch[Filter::Del_SearchOrder] <= 1);
-    if ((status = filter.Switch[Filter::Del_Keyword]) == Filter::Type_Off) {
+    assert((int)!!filter.Switch[Filter::Keep_Keyword] + !!filter.Switch[Filter::Keep_NameLength] +
+      !!filter.Switch[Filter::Keep_PathDepth] + !!filter.Switch[Filter::Keep_SearchOrder] <= 1);
+    if ((status = filter.Switch[Filter::Keep_Keyword]) == Filter::Type_Off) {
       EnableControls(hDlg, IDC_CHECK_DEL_KEYWORD, false);
     }
     else {
@@ -513,7 +512,7 @@ namespace Detail
       SetDlgItemText(hDlg, IDC_EDIT_DEL_KEYWORD_EXC, inc ? L"" : filter.mKeyWordOfFileNameForDelete.c_str());
     }
 
-    if ((status = filter.Switch[Filter::Del_NameLength]) == Filter::Type_Off) {
+    if ((status = filter.Switch[Filter::Keep_NameLength]) == Filter::Type_Off) {
       EnableControls(hDlg, IDC_CHECK_DEL_NAMELEN, false);
     }
     else {
@@ -523,7 +522,7 @@ namespace Detail
       CheckDlgButton(hDlg, IDC_RADIO_DEL_NAMELEN_SHORT, status == Filter::Type_Short);
     }
 
-    if ((status = filter.Switch[Filter::Del_PathDepth]) == Filter::Type_Off) {
+    if ((status = filter.Switch[Filter::Keep_PathDepth]) == Filter::Type_Off) {
       EnableControls(hDlg, IDC_CHECK_DEL_PATHDEP, false);
     }
     else {
@@ -533,7 +532,7 @@ namespace Detail
       CheckDlgButton(hDlg, IDC_RADIO_DEL_PATHDEP_SHALLOW, status == Filter::Type_Short);
     }
 
-    if ((status = filter.Switch[Filter::Del_SearchOrder]) == Filter::Type_Off) {
+    if ((status = filter.Switch[Filter::Keep_SearchOrder]) == Filter::Type_Off) {
       EnableControls(hDlg, IDC_CHECK_DEL_SEARCHORD, false);
     }
     else {
@@ -709,44 +708,43 @@ namespace Detail
         int len = wcslen(Buffer);
         if (Buffer[len - 1] == L'\\')     // 选择分区根目录时最后为反斜杠
           Buffer[len - 1] = L'\0';
-        filter.mSearchDirectory.insert(
-          std::make_pair(std::wstring(Buffer), -1/*times*/));
+        filter.mSearchDirectory.push_back({ std::wstring(Buffer), -1/*times*/ });
       }
     }
 
     //------------------------------------------- 删除策略
 
-    filter.Switch[Filter::Del_Keyword] = Filter::Type_Off;
+    filter.Switch[Filter::Keep_Keyword] = Filter::Type_Off;
     if (IsDlgButtonChecked(hDlg, IDC_CHECK_DEL_KEYWORD)) {
       if (IsDlgButtonChecked(hDlg, IDC_RADIO_DEL_KEYWORD_INC)) {
-        filter.Switch[Filter::Del_Keyword] = Filter::Type_Include;
+        filter.Switch[Filter::Keep_Keyword] = Filter::Type_Include;
         GetDlgItemText(hDlg, IDC_EDIT_DEL_KEYWORD_INC, Buffer, MAX_PATH);
         filter.mKeyWordOfFileNameForDelete = Buffer;
       }
       else {
-        filter.Switch[Filter::Del_Keyword] = Filter::Type_Ignore;
+        filter.Switch[Filter::Keep_Keyword] = Filter::Type_Ignore;
         GetDlgItemText(hDlg, IDC_EDIT_DEL_KEYWORD_EXC, Buffer, MAX_PATH);
         filter.mKeyWordOfFileNameForDelete = Buffer;
       }
       assert(!filter.mKeyWordOfFileNameForDelete.empty());
     }
 
-    filter.Switch[Filter::Del_NameLength] = Filter::Type_Off;
+    filter.Switch[Filter::Keep_NameLength] = Filter::Type_Off;
     if (IsDlgButtonChecked(hDlg, IDC_CHECK_DEL_NAMELEN)) {
-      filter.Switch[Filter::Del_NameLength] = IsDlgButtonChecked(hDlg, IDC_RADIO_DEL_NAMELEN_LONG) ? Filter::Type_Long : Filter::Type_Short;
+      filter.Switch[Filter::Keep_NameLength] = IsDlgButtonChecked(hDlg, IDC_RADIO_DEL_NAMELEN_LONG) ? Filter::Type_Long : Filter::Type_Short;
     }
 
-    filter.Switch[Filter::Del_PathDepth] = Filter::Type_Off;
+    filter.Switch[Filter::Keep_PathDepth] = Filter::Type_Off;
     if (IsDlgButtonChecked(hDlg, IDC_CHECK_DEL_PATHDEP)) {
-      filter.Switch[Filter::Del_PathDepth] = IsDlgButtonChecked(hDlg, IDC_RADIO_DEL_PATHDEP_DEPTH) ? Filter::Type_Long : Filter::Type_Short;
+      filter.Switch[Filter::Keep_PathDepth] = IsDlgButtonChecked(hDlg, IDC_RADIO_DEL_PATHDEP_DEPTH) ? Filter::Type_Long : Filter::Type_Short;
     }
 
-    filter.Switch[Filter::Del_SearchOrder] = Filter::Type_Off;
+    filter.Switch[Filter::Keep_SearchOrder] = Filter::Type_Off;
     if (IsDlgButtonChecked(hDlg, IDC_CHECK_DEL_SEARCHORD)) {
-      filter.Switch[Filter::Del_SearchOrder] = IsDlgButtonChecked(hDlg, IDC_RADIO_DEL_SEARCHORD_FRONT) ? Filter::Type_First : Filter::Type_Last;
+      filter.Switch[Filter::Keep_SearchOrder] = IsDlgButtonChecked(hDlg, IDC_RADIO_DEL_SEARCHORD_FRONT) ? Filter::Type_First : Filter::Type_Last;
     }
-    assert((int)!!filter.Switch[Filter::Del_Keyword] + !!filter.Switch[Filter::Del_NameLength] +
-      !!filter.Switch[Filter::Del_PathDepth] + !!filter.Switch[Filter::Del_SearchOrder] <= 1);
+    assert((int)!!filter.Switch[Filter::Keep_Keyword] + !!filter.Switch[Filter::Keep_NameLength] +
+      !!filter.Switch[Filter::Keep_PathDepth] + !!filter.Switch[Filter::Keep_SearchOrder] <= 1);
   }
 }
 
@@ -781,7 +779,7 @@ bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
   {
   case IDM_OPENFILE:
   case IDM_DELETE:
-    if (iClickItem >= g_DataBase.size() || iClickItem < 0)
+    if (iClickItem >= static_cast<int>(g_DataBase.size()) || iClickItem < 0)
       return TRUE;
 
     if (id == IDM_OPENFILE)
@@ -818,7 +816,7 @@ bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
     return TRUE;
 
   case IDM_EXPLORER:
-    if (iClickItem < g_DataBase.size() && iClickItem >= 0)
+    if (iClickItem < static_cast<int>(g_DataBase.size()) && iClickItem >= 0)
     {
       wstring cmd(L"/select,\"");
       cmd += g_DataBase[iClickItem].fi->mPath.c_str();

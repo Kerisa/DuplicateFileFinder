@@ -21,10 +21,10 @@ struct Filter
     Search_FileAttribute,   // 文件属性过滤
     Search_FileSize,        // 文件大小过滤
     Search_Suffix,			    // 文件类型过滤2
-    Del_Keyword,            // 按关键字是否存在删除
-    Del_NameLength,         // 按文件名长短删除
-    Del_PathDepth,          // 按路径深度删除
-    Del_SearchOrder,        // 按添加搜索目录的顺序删除
+    Keep_Keyword,            // 按关键字是否存在删除
+    Keep_NameLength,         // 按文件名长短删除
+    Keep_PathDepth,          // 按路径深度删除
+    Keep_SearchOrder,        // 按添加搜索目录的顺序删除
     RuleSwitchEnd,
 
     Type_Off = 0,
@@ -45,6 +45,11 @@ struct Filter
     Attrib_Normal   = FILE_ATTRIBUTE_NORMAL,
   };
 
+  struct SearchDirParam {
+    std::wstring mDir;
+    int mRecursionDepth{ -1 };
+  };
+
   std::array<int, RuleSwitchEnd>  Switch;
   DWORD                           SelectedAttributes;
   int                             FileNameWithoutSuffix;
@@ -56,10 +61,12 @@ struct Filter
   std::wstring                    mKeyWordOfFileName;           // 查找时文件名中包含的关键字
   std::wstring                    mKeyWordOfFileNameForDelete;  // 优先删除时文件名中包含的关键字
   std::vector<std::wstring>       mSuffix;                      // 包含的后缀名
-  std::map<std::wstring, int>     mSearchDirectory;             // 查找目录
+  std::vector<SearchDirParam>     mSearchDirectory;             // 查找目录
 
-  std::wstring				            MakeCompareCommand();
-  std::vector<std::wstring>	      MakeSearchCommand();
+  std::wstring                    MakeCompareCommand() const;
+  std::vector<std::wstring>	      MakeSearchCommand() const;
+
+  size_t                          GetSearchPathOrder(const std::wstring& p) const;
 };
 
 
