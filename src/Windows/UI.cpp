@@ -778,48 +778,50 @@ bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
   switch (id)
   {
   case IDM_OPENFILE:
-  case IDM_DELETE:
+    if (iClickItem >= 0 && iClickItem < static_cast<int>(g_DataBase.size()))
+      ShellExecute(0, TEXT("open"), g_DataBase[iClickItem].fi->mPath.c_str(), NULL, NULL, SW_SHOW);
+    return TRUE;
+
+  case IDM_NOTEPAD_OPEN:
+    if (iClickItem >= 0 && iClickItem < static_cast<int>(g_DataBase.size()))
+      ShellExecute(0, TEXT("open"), TEXT("notepad.exe"), g_DataBase[iClickItem].fi->mPath.c_str(), NULL, SW_SHOW);
+    return TRUE;
+
+  case IDM_DELETE: {
     if (iClickItem >= static_cast<int>(g_DataBase.size()) || iClickItem < 0)
       return TRUE;
 
-    if (id == IDM_OPENFILE)
+    StringCbCopy(szBuffer1, _countof(szBuffer1), TEXT("确认将文件放入回收站：\r\n"));
+    StringCbCat(szBuffer1, _countof(szBuffer1), g_DataBase[iClickItem].fi->mPath.c_str());
+    if (IDNO == MessageBox(hDlg, szBuffer1, TEXT("删除文件"), MB_YESNO | MB_DEFBUTTON2 | MB_ICONWARNING))
+      return TRUE;
+
+    vector<wchar_t> doubleNull(g_DataBase[iClickItem].fi->mPath.begin(), g_DataBase[iClickItem].fi->mPath.end());
+    doubleNull.push_back(L'\0');
+    doubleNull.push_back(L'\0');
+    SHFILEOPSTRUCT fo = { 0 };
+    fo.wFunc = FO_DELETE;
+    fo.pFrom = doubleNull.data();
+    fo.fFlags = FOF_NO_UI | FOF_ALLOWUNDO;
+
+    if (SHFileOperation(&fo) || !GetLastError())
     {
-      ShellExecute(0, 0, g_DataBase[iClickItem].fi->mPath.c_str(), NULL, NULL, SW_SHOW);
+      ListView_DeleteItem(g_hList, iClickItem);
+      g_DataBase.erase(g_DataBase.begin() + iClickItem);
+      UpdateStatusBar(1, 0);
     }
     else
     {
-      StringCbCopy(szBuffer1, _countof(szBuffer1), TEXT("确认将文件放入回收站：\r\n"));
-      StringCbCat(szBuffer1, _countof(szBuffer1), g_DataBase[iClickItem].fi->mPath.c_str());
-      if (IDNO == MessageBox(hDlg, szBuffer1, TEXT("删除文件"), MB_YESNO | MB_DEFBUTTON2 | MB_ICONWARNING))
-        return TRUE;
-
-      vector<wchar_t> doubleNull(g_DataBase[iClickItem].fi->mPath.begin(), g_DataBase[iClickItem].fi->mPath.end());
-      doubleNull.push_back(L'\0');
-      doubleNull.push_back(L'\0');
-      SHFILEOPSTRUCT fo = { 0 };
-      fo.wFunc = FO_DELETE;
-      fo.pFrom = doubleNull.data();
-      fo.fFlags = FOF_NO_UI | FOF_ALLOWUNDO;
-
-      if (SHFileOperation(&fo) || !GetLastError())
-      {
-        ListView_DeleteItem(g_hList, iClickItem);
-        g_DataBase.erase(g_DataBase.begin() + iClickItem);
-        UpdateStatusBar(1, 0);
-      }
-      else
-      {
-        MessageBox(hDlg, TEXT("无法删除文件，请手动删除"), TEXT("提示"), MB_ICONEXCLAMATION);
-      }
+      MessageBox(hDlg, TEXT("无法删除文件，请手动删除"), TEXT("提示"), MB_ICONEXCLAMATION);
     }
     return TRUE;
-
+  }
   case IDM_EXPLORER:
     if (iClickItem < static_cast<int>(g_DataBase.size()) && iClickItem >= 0)
     {
-      wstring cmd(L"/select,\"");
+      wstring cmd(LR"(/select,")");
       cmd += g_DataBase[iClickItem].fi->mPath.c_str();
-      cmd += L"\"";
+      cmd += LR"(")";
       ShellExecute(0, 0, L"explorer.exe", cmd.c_str(), 0, SW_SHOW);
     }
     return TRUE;
