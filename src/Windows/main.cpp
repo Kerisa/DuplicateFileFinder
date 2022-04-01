@@ -67,6 +67,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    ShowWindow(hWnd, nCmdShow);
    UpdateWindow(hWnd);
 
+   g_hDlg = hWnd;
+
    return TRUE;
 }
 
@@ -142,6 +144,10 @@ LRESULT CALLBACK MainWndProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam)
             return ret;
         break;
     }
+
+    case WM_FINISHFIND:
+        Cls_OnFinishFind(hDlg);
+        break;
 
     default:
         break;
@@ -385,7 +391,7 @@ DWORD WINAPI Thread(PVOID pvoid)
         }
 
         MessageBox(NULL, L"≤È’“Ω· ¯", szAppName, MB_ICONINFORMATION);
-        ListView_SetItemCount(g_hList, g_DataBase.size());
+        PostMessage(g_hDlg, WM_FINISHFIND, 0, 0);
     }
 
     return 0;

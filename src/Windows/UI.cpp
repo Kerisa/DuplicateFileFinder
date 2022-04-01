@@ -12,7 +12,7 @@
 
 using namespace std;
 
-HWND        g_hList, g_hStatus, g_hDlgFilter;
+HWND        g_hList, g_hStatus, g_hDlgFilter, g_hDlg;
 static int iClickItem;
 HANDLE      g_ThreadSignal, g_hThread;
 volatile bool bTerminateThread;
@@ -788,9 +788,9 @@ bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
     }
     else
     {
-      StringCbCopy(szBuffer1, _countof(szBuffer1), TEXT("确认删除"));
+      StringCbCopy(szBuffer1, _countof(szBuffer1), TEXT("确认将文件放入回收站：\r\n"));
       StringCbCat(szBuffer1, _countof(szBuffer1), g_DataBase[iClickItem].fi->mPath.c_str());
-      if (IDNO == MessageBox(hDlg, szBuffer1, TEXT("提示"), MB_YESNO | MB_DEFBUTTON2 | MB_ICONWARNING))
+      if (IDNO == MessageBox(hDlg, szBuffer1, TEXT("删除文件"), MB_YESNO | MB_DEFBUTTON2 | MB_ICONWARNING))
         return TRUE;
 
       vector<wchar_t> doubleNull(g_DataBase[iClickItem].fi->mPath.begin(), g_DataBase[iClickItem].fi->mPath.end());
@@ -801,7 +801,6 @@ bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
       fo.pFrom = doubleNull.data();
       fo.fFlags = FOF_NO_UI | FOF_ALLOWUNDO;
 
-      //DeleteFile(g_DataBase[iClickItem].fi->mPath.c_str());
       if (SHFileOperation(&fo) || !GetLastError())
       {
         ListView_DeleteItem(g_hList, iClickItem);
@@ -827,12 +826,12 @@ bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
 
   case IDM_DELETEALL:
   {
-    if (IDNO == MessageBox(hDlg, TEXT("确认删除全部选中文件？"), TEXT("提示"),
+    if (IDNO == MessageBox(hDlg, TEXT("确认将全部选中文件放入回收站？"), TEXT("删除文件"),
       MB_YESNO | MB_DEFBUTTON2 | MB_ICONWARNING))
       return TRUE;
 
     int delCnt = 0;
-    for (size_t i = 0; i < g_DataBase.size(); ++i)
+    for (size_t i = 0; i < g_DataBase.size(); ++i) {
       if (g_DataBase[i].checkstate == CHECKBOX_SECLECTED)
       {
         vector<wchar_t> doubleNull(g_DataBase[i].fi->mPath.begin(), g_DataBase[i].fi->mPath.end());
@@ -843,29 +842,25 @@ bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
         fo.pFrom = doubleNull.data();
         fo.fFlags = FOF_NO_UI | FOF_ALLOWUNDO;
 
-        //DeleteFile(g_DataBase[i].fi->mPath.c_str());
-        if (SHFileOperation(&fo) || !GetLastError())
-        {
+        if (SHFileOperation(&fo) || !GetLastError()) {
           g_DataBase.erase(g_DataBase.begin() + i);
           ++delCnt;
           // i保持不变
           --i;
         }
-        else
-        {
-          StringCbPrintf(szBuffer1, _countof(szBuffer1),
-            TEXT("无法删除文件%s，请手动删除"), g_DataBase[i].fi->mPath.c_str());
+        else {
+          StringCbPrintf(szBuffer1, _countof(szBuffer1), TEXT("无法删除文件 %s，请手动删除"), g_DataBase[i].fi->mPath.c_str());
           UpdateStatusBar(0, szBuffer1);
         }
       }
+    }
 
     // 更新item数量
     ListView_SetItemCount(g_hList, g_DataBase.size());
     UpdateStatusBar(1, nullptr);
     InvalidateRect(hDlg, NULL, TRUE);
 
-    StringCbPrintf(szBuffer1, _countof(szBuffer1),
-      TEXT("%d个文件已删除"), delCnt);
+    StringCbPrintf(szBuffer1, _countof(szBuffer1), TEXT("%d 个文件已删除"), delCnt);
     MessageBox(hDlg, szBuffer1, L"删除文件", MB_ICONINFORMATION);
     return TRUE;
   }
@@ -956,6 +951,7 @@ bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
       }
       i = j;
     }
+    UpdateStatusBar(1, 0);
     return TRUE;
 
   case IDM_SELECT_DUP_IN_GROUP_VIA_CRC:
@@ -989,6 +985,7 @@ bool Cls_OnCommand_main(HWND hDlg, int id, HWND hwndCtl, UINT codeNotify)
       }
       i = j;
     }
+    UpdateStatusBar(1, 0);
     return TRUE;
 
     //----------------------------------------------------------------------------------------------------
@@ -1094,6 +1091,12 @@ void Cls_OnSysCommand0(HWND hwnd, UINT cmd, int x, int y)
     SendMessage(g_hDlgFilter, WM_SYSCOMMAND, SC_CLOSE, 0);
     PostQuitMessage(0);
   }
+}
+
+void Cls_OnFinishFind(HWND hDlg)
+{
+  ListView_SetItemCount(g_hList, g_DataBase.size());
+  UpdateStatusBar(1, 0);
 }
 
 void Cls_OnSize(HWND hwnd, UINT state, int cx, int cy)
