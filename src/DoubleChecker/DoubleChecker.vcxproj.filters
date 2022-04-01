@@ -26,6 +26,9 @@
     <ClInclude Include="..\..\include\crc32\crc.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -49,5 +52,8 @@
     <ClCompile Include="..\..\include\Common.cpp">
       <Filter>src</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="DoubleChecker.rc" />
   </ItemGroup>
 </Project>

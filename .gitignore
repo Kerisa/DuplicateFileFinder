@@ -39,6 +39,9 @@ Release
 *.iobj
 *.suo
 *.user
+
+.vs
+
 /bin/Find_d.exe
 /pdb/Find_d.pdb
 /bin/Finder.exe
@@ -57,7 +60,7 @@ Release
 /bin/DoubleCheckerTest.exe
 /pdb/DoubleChecker.pdb
 /pdb/DoubleCheckerTest.pdb
-/bin/Windows.exe
-/bin/Windows_d.exe
-/pdb/Windows.pdb
-/pdb/Windows_d.pdb
+/bin/DuplicateFileFinder.exe
+/bin/DuplicateFileFinder_d.exe
+/pdb/DuplicateFileFinder.pdb
+/pdb/DuplicateFileFinder_d.pdb
